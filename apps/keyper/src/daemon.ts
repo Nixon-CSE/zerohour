@@ -28,6 +28,7 @@ export interface ChainSecret {
 }
 
 interface State {
+  exam: string; // the ZeroHourExam contract the cursor refers to
   examCursor: string; // next block to scan
   targets: ExamTarget[];
 }
@@ -42,9 +43,11 @@ const log = (event: string, data: Record<string, unknown> = {}) => {
 };
 
 function loadState(): State {
-  if (!existsSync(paths.state)) return { examCursor: contracts.examFromBlock.toString(), targets: [] };
+  const fresh = { exam: contracts.exam.toLowerCase(), examCursor: contracts.examFromBlock.toString(), targets: [] };
+  if (!existsSync(paths.state)) return fresh;
   const s = JSON.parse(readFileSync(paths.state, "utf8"));
-  return { examCursor: s.examCursor ?? "0", targets: (s.targets ?? []).map((t: any) => ({ ...t, block: BigInt(t.block) })) };
+  if (s.exam !== fresh.exam) return fresh; // different exam contract: rescan from its deploy block
+  return { exam: s.exam, examCursor: s.examCursor ?? "0", targets: (s.targets ?? []).map((t: any) => ({ ...t, block: BigInt(t.block) })) };
 }
 function saveState(s: State) {
   mkdirSync(dirname(paths.state), { recursive: true });
