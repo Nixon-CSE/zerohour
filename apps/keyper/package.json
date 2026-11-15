@@ -1,0 +1,26 @@
+{
+  "name": "@zerohour/keyper",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Hourglass keyper daemon: releases each committed ML-KEM round seed exactly when its time has come on QoreChain - never a second early",
+  "bin": { "zerohour-keyper": "src/cli.ts" },
+  "scripts": {
+    "keyper": "tsx src/cli.ts",
+    "keyper1": "KEYPER_HOME=../../secrets/keyper1-home KEYPER_ACCOUNT=../../secrets/drill.secret.json KEYPER_CHAIN=../../secrets/keyper1.secret.json tsx src/cli.ts",
+    "test": "node --import tsx --test test/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@cosmjs/stargate": "^0.39.0",
+    "@qorechain/evm": "^0.14.0",
+    "@qorechain/sdk": "^0.14.0",
+    "@zerohour/hourglass": "file:../../packages/hourglass",
+    "viem": "^2.57.20"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.3"
+  }
+}
