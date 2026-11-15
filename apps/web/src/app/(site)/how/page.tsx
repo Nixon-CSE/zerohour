@@ -42,7 +42,7 @@ export default function How() {
 
       <section>
         <h2>The life of one exam</h2>
-        <ol className="steps mt-6">
+        <ol className="steps two mt-6">
           {LIFE.map(([t, d, code]) => (
             <li key={t}>
               <h3>{t}</h3>

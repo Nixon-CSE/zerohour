@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { formatEther } from "viem";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Hash, ago, useAsync, useChainNow } from "@/components/zh";
 import { registryState } from "@/lib/overview";
 import { eq } from "@/lib/exam";
@@ -20,6 +21,10 @@ export default function Keypers() {
       <div className="page-head">
         <h1>Keypers</h1>
         <p className="lead">Keypers hold the time. Each one bonds QOR, commits a hash chain of seeds, and posts one seed per round when the round opens. Any threshold of them opens a paper. Fewer than that opens nothing.</p>
+        <div className="hero-cta" style={{ marginTop: 24 }}>
+          <Button asChild size="xl"><a href="#run">Run a keyper</a></Button>
+          <Button asChild size="xl" variant="outline"><Link href="/ledger/">See every release</Link></Button>
+        </div>
       </div>
 
       <section>
@@ -61,7 +66,7 @@ export default function Keypers() {
       </section>
 
       <section>
-        <h2>Run a keyper on testnet</h2>
+        <h2 id="run">Run a keyper on testnet</h2>
         <p className="muted">About five minutes. You need Node 20+ and a little test QOR from the faucet.</p>
         <pre className="cmd mt-4">{`git clone https://github.com/Nixon-CSE/zerohour && cd zerohour/apps/keyper
 npm install

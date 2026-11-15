@@ -2,7 +2,7 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-@custom-variant dark (&:is(.dark *));
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 /* ZeroHour. Visual language taken from an exam-hall OMR answer sheet:
    drop-out magenta ink = sealed / printed grid, HB graphite = released / filled by hand,
@@ -70,6 +70,23 @@
     color-scheme: dark;
   }
 }
+
+:root[data-theme="dark"] {
+    --paper: #1c1d22;
+    --paper-2: #24252b;
+    --omr: #f0739c;
+    --omr-tint: #4a2533;
+    --omr-faint: #2b2027;
+    --graphite: #ececef;
+    --graphite-2: #a3a5ad;
+    --rule: #3c3238;
+    --pen: #93a9ff;
+    --pen-tint: #252c46;
+    --bad: #ff8a8a;
+    --navy: #0b1027;
+    --navy-2: #141b36;
+    color-scheme: dark;
+  }
 
 @theme inline {
   --font-sans: var(--zh-sans), system-ui, sans-serif;
@@ -408,4 +425,22 @@ html.is-landing .site-foot { border-top: 0; }
 /* the decrypted paper keeps its numbering under Tailwind's preflight */
 .qpaper ol { list-style: decimal; }
 
+
+/* ===================================================================== review pass */
+.skip { position: absolute; left: 12px; top: -60px; z-index: 100; background: var(--graphite); color: var(--paper); padding: 10px 16px; border-radius: 8px; font-weight: 600; }
+.skip:focus { top: 12px; }
+.chips dt { white-space: nowrap; }
+.page-head { padding-bottom: 28px; border-bottom: 1px solid var(--rule); background-image: radial-gradient(circle, transparent 4.5px, var(--omr-tint) 5px, var(--omr-tint) 6px, transparent 6.5px); background-size: 30px 30px; background-position: right 8px top 6px; background-repeat: repeat-y; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.card { border: 1.5px solid var(--rule); border-radius: 14px; padding: 22px; display: grid; gap: 16px; align-content: start; background: var(--paper); }
+.card.alert { border-color: color-mix(in srgb, var(--bad) 45%, var(--rule)); }
+.card header { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+.card h3 { font-size: 20px; margin-bottom: 2px; }
+.card dl { margin: 0; display: grid; gap: 12px 32px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.card dt { font-size: 12.5px; color: var(--omr); font-weight: 600; margin-bottom: 2px; }
+.card dd { margin: 0; font-size: 15px; }
+.card > a, .card > button { justify-self: start; }
+.keyline { white-space: normal; display: block; word-spacing: 0.1em; }
+@media (min-width: 900px) { .steps.two { display: grid; grid-template-columns: 1fr 1fr; column-gap: 56px; } }
+.steps.two code { display: inline-block; margin-top: 4px; }
 }
