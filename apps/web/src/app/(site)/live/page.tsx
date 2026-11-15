@@ -4,11 +4,14 @@ import { formatEther } from "viem";
 import { Bubbles, Hash, ago, hms, span, useAsync, useChainNow, utc } from "@/components/zh";
 import { allExams, registryState, revealOf, type ExamSummary, type Release } from "@/lib/overview";
 import { eq } from "@/lib/exam";
+import { examTitle } from "@/lib/names";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 function Bell({ exam, releases }: { exam: ExamSummary; releases: Release[] }) {
   const now = useChainNow();
   const before = !exam.unlocked && now < exam.unlockAt;
-  const name = exam.name ?? `Exam ${exam.id.slice(0, 10)}`;
+  const name = examTitle(exam.name, exam.id);
   const items = exam.keypers.map((k, i) => {
     const r = revealOf(releases, k.address, exam.round);
     const on = exam.round < k.nextRound;
@@ -34,6 +37,10 @@ function Bell({ exam, releases }: { exam: ExamSummary; releases: Release[] }) {
             ? `Opened at the bell: ${done} of ${exam.keypers.length} keypers posted their seed, ${exam.threshold} were needed. ${exam.centres} centres hold sealed copies.`
             : `The bell has rung and ${done} of ${exam.threshold} needed seeds are public. The keyper daemons post within seconds of the next block.`}
       </p>
+      <div className="hero-cta" style={{ marginTop: 20 }}>
+        <Button asChild size="xl"><Link href={`/exam/?id=${exam.id}`}>Open this exam</Link></Button>
+        <Button asChild size="xl" variant="outline"><Link href="/ledger/">See the release ledger</Link></Button>
+      </div>
     </div>
   );
 }
@@ -48,10 +55,7 @@ export default function Live() {
   return (
     <>
       <h1>Live bell</h1>
-      <p className="muted" style={{ marginTop: 14 }}>
-        ZeroHour seals each centre&apos;s paper twice: to a time lock held by independent keypers, and to the centre&apos;s own
-        post-quantum key. Keypers post a 32-byte seed when the bell rings. Post it early and anyone can take their bond.
-      </p>
+      <p className="lead" style={{ marginTop: 14 }}>The next exam bell, read from QoreChain as you watch. A bubble fills when that keyper&apos;s seed is public.</p>
 
       {exams.error && <p className="err">Could not read exams from QoreChain: {exams.error}</p>}
       {featured && reg.data ? <Bell exam={featured} releases={reg.data.releases} /> : !exams.error && <p className="pending" style={{ marginTop: 40 }}>Reading the chain…</p>}
@@ -64,9 +68,9 @@ export default function Live() {
             <tbody>
               {list.map((e) => (
                 <tr key={e.id}>
-                  <td><Link href={`/exam/?id=${e.id}`}>{e.name ?? "Unnamed exam"}</Link><br /><Hash v={e.id} /></td>
+                  <td><Link href={`/exam/?id=${e.id}`}>{examTitle(e.name, e.id)}</Link><br /><Hash v={e.id} /></td>
                   <td>{utc(e.unlockAt, false)}<br /><span className="muted small">round {e.round}{e.usingBackup ? ", backup" : ""}</span></td>
-                  <td>{e.unlocked ? (e.revealed ? "Opened, fairness proven" : "Opened") : now < e.unlockAt ? `Sealed, ${span(e.unlockAt - now)} to go` : "Bell rung, waiting for seeds"}</td>
+                  <td>{e.unlocked ? <Badge className="bg-[var(--pen-tint)] text-[var(--pen)]">{e.revealed ? "Opened, fairness proven" : "Opened"}</Badge> : now < e.unlockAt ? <Badge className="bg-[var(--omr-faint)] text-[var(--omr)]">Sealed, {span(e.unlockAt - now)} to go</Badge> : <Badge variant="secondary">Bell rung, waiting for seeds</Badge>}</td>
                   <td>{e.centres}</td>
                   <td>{e.threshold} of {e.keypers.length}</td>
                 </tr>
@@ -92,7 +96,7 @@ export default function Live() {
                     <td>{formatEther(k.bond)} QOR</td>
                     <td>{k.nextRound ? `round ${k.nextRound - 1}` : "nothing yet"}<br /><span className="muted small">of {k.maxRound}, {k.roundSeconds} s rounds</span></td>
                     <td>{last ? `${ago(now - last.time)} ago` : "never"}</td>
-                    <td>{k.slashed ? <span className="no">Slashed</span> : k.exitAt ? "Exiting" : "Bonded"}</td>
+                    <td>{k.slashed ? <Badge variant="destructive">Slashed</Badge> : k.exitAt ? <Badge variant="secondary">Exiting</Badge> : <Badge className="bg-[var(--pen-tint)] text-[var(--pen)]">Bonded</Badge>}</td>
                   </tr>
                 );
               })}

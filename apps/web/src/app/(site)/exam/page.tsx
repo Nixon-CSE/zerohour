@@ -4,12 +4,16 @@ import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { bytesToHex, hexToBytes, k256 } from "@zerohour/hourglass";
 import type { Hex } from "viem";
+import { ArrowRight } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { centreLabel, examTitle } from "@/lib/names";
 import { Bubbles, Hash, Verdict, hms, span, useAsync, useChainNow, utc } from "@/components/zh";
 import { eq, loadExam, publicFile, sealedFor, verifyFairness, type ExamView, type TimelineEntry } from "@/lib/exam";
 
 const describe = (t: TimelineEntry, v: ExamView) => {
   const k = (a: string) => `K${v.onchain.keypers.findIndex((x) => eq(x, a)) + 1}`;
-  const c = (a: string) => v.centres.find((x) => eq(x.address, a))?.name ?? a.slice(0, 10);
+  const c = (a: string) => centreLabel(v.centres.find((x) => eq(x.address, a))?.name ?? a);
   switch (t.kind) {
     case "created": return `Board created the exam: rounds ${t.args.roundA} (paper A) and ${t.args.roundB} (backup B), ${t.args.threshold} of ${t.args.keypers.length} keypers`;
     case "centre": return `Board registered ${c(t.args.centre)} with its ciphertext hashes and permutation commitment`;
@@ -26,27 +30,26 @@ function Centres({ v }: { v: ExamView }) {
   const backup = v.onchain.usingBackup;
   const checks = useAsync(() => Promise.all(v.centres.map((c) => sealedFor(v, c.address, backup))), [v.id]);
   return (
-    <div className="scroll">
-      <table className="sheet">
-        <thead><tr><th>Centre</th><th>Published ciphertext</th><th>Opened</th><th>Leak reports</th><th></th></tr></thead>
-        <tbody>
-          {v.centres.map((c, i) => {
-            const chk = checks.data?.[i];
-            return (
-              <tr key={c.address}>
-                <td>{c.name}<br /><Hash v={c.address} kind="addr" n={4} /></td>
-                <td>
-                  <Hash v={backup ? c.ctHashB : c.ctHashA} /><br />
-                  <span className="small">{checks.loading ? <span className="pending">checking…</span> : chk?.sealed ? <Verdict ok={chk.matches} yes="file matches on-chain hash" no="file does not match" /> : <span className="muted">no public copy here</span>}</span>
-                </td>
-                <td>{c.openedAt ? <>{utc(c.openedAt)}<br /><span className="muted small">{c.openedAt - v.unlockAt} s after the bell</span></> : <span className="muted">not yet</span>}</td>
-                <td className={c.leakReports ? "no" : ""}>{c.leakReports}</td>
-                <td><Link href={`/open/?id=${v.id}&centre=${c.address}`}>Open as this centre</Link></td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+    <div className="cards">
+      {v.centres.map((c, i) => {
+        const chk = checks.data?.[i];
+        return (
+          <article key={c.address} className="card">
+            <header>
+              <div>
+                <h3>{centreLabel(c.name)}</h3>
+                <Hash v={c.address} kind="addr" n={4} />
+              </div>
+              {c.leakReports ? <Badge variant="destructive">{c.leakReports} leak report{c.leakReports > 1 ? "s" : ""}</Badge> : c.openedAt ? <Badge className="bg-[var(--pen-tint)] text-[var(--pen)]">Opened</Badge> : <Badge variant="secondary">Sealed</Badge>}
+            </header>
+            <dl>
+              <div><dt>Published ciphertext</dt><dd><Hash v={backup ? c.ctHashB : c.ctHashA} /><br />{checks.loading ? <span className="pending">checking…</span> : chk?.sealed ? <Verdict ok={chk.matches} yes="file matches on-chain hash" no="file does not match" /> : <span className="muted">no public copy here</span>}</dd></div>
+              <div><dt>Opened</dt><dd>{c.openedAt ? <>{utc(c.openedAt)}<br /><span className="muted small">{c.openedAt - v.unlockAt} s after the bell</span></> : <span className="muted">not yet</span>}</dd></div>
+            </dl>
+            <Button asChild variant="outline" size="lg"><Link href={`/open/?id=${v.id}&centre=${c.address}`}>Open as this centre <ArrowRight /></Link></Button>
+          </article>
+        );
+      })}
     </div>
   );
 }
@@ -56,28 +59,30 @@ function Leaks({ v }: { v: ExamView }) {
   const files = useAsync(async () => Promise.all(leaks.map((l) => (v.dir ? publicFile<{ envelope: Hex; evidenceHash: Hex }>(v.dir, `leak-${(l.args.evidenceHash as string).slice(0, 10)}.sealed.json`) : null))), [v.id]);
   if (!leaks.length) return <p className="muted">No leak reports filed.</p>;
   return (
-    <div className="scroll">
-      <table className="sheet">
-        <thead><tr><th>Traced to</th><th>Confidence</th><th>Evidence hash</th><th>Sealed evidence</th><th>Tx</th></tr></thead>
-        <tbody>
-          {leaks.map((l, i) => {
-            const f = files.data?.[i];
-            const ok = f ? eq(bytesToHex(k256(hexToBytes(f.envelope))), l.args.sealedEvidenceRef) : undefined;
-            return (
-              <tr key={l.tx}>
-                <td>{v.centres.find((c) => eq(c.address, l.args.centre))?.name}</td>
-                <td>{(l.args.confidenceBps / 100).toFixed(2)}%</td>
-                <td><Hash v={l.args.evidenceHash} /></td>
-                <td>{f ? <><Verdict ok={ok} yes="envelope matches on-chain ref" no="envelope mismatch" /><br /><span className="muted small">QoreSeal-sealed to the board, {Math.round(f.envelope.length / 2 / 1024)} KB</span></> : <span className="muted">not published</span>}</td>
-                <td><Hash v={l.tx} kind="tx" n={4} /></td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+    <div className="cards">
+      {leaks.map((l, i) => {
+        const f = files.data?.[i];
+        const ok = f ? eq(bytesToHex(k256(hexToBytes(f.envelope))), l.args.sealedEvidenceRef) : undefined;
+        const name = v.centres.find((c) => eq(c.address, l.args.centre))?.name ?? l.args.centre;
+        return (
+          <article key={l.tx} className="card alert">
+            <header>
+              <div><h3>Traced to {centreLabel(name)}</h3><span className="muted small">{l.time ? utc(l.time) : ""}</span></div>
+              <Badge variant="destructive">{(l.args.confidenceBps / 100).toFixed(2)}% confidence</Badge>
+            </header>
+            <dl>
+              <div><dt>Evidence hash</dt><dd><Hash v={l.args.evidenceHash} /></dd></div>
+              <div><dt>Sealed evidence</dt><dd>{f ? <><Verdict ok={ok} yes="envelope matches on-chain ref" no="envelope mismatch" /><br /><span className="muted small">QoreSeal-sealed to the board, {Math.round(f.envelope.length / 2 / 1024)} KB</span></> : <span className="muted">not published</span>}</dd></div>
+              <div><dt>Report</dt><dd><Hash v={l.tx} kind="tx" n={4} /></dd></div>
+            </dl>
+          </article>
+        );
+      })}
     </div>
   );
 }
+
+const pretty = (label: string) => label.replace(/^(centre-[a-z]+-\d+)/, (m) => centreLabel(m));
 
 function Fairness({ v }: { v: ExamView }) {
   const f = useAsync(() => verifyFairness(v), [v.id]);
@@ -87,7 +92,7 @@ function Fairness({ v }: { v: ExamView }) {
   return (
     <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
       {f.data.checks.map((c) => (
-        <li key={c.label} style={{ marginBottom: 8 }}><Verdict ok={c.ok} yes={c.label} no={c.label} />{" "}{c.detail.startsWith("0x") ? <Hash v={c.detail} /> : <span className="hash muted">answer key {c.detail}</span>}</li>
+        <li key={c.label} style={{ marginBottom: 8 }}><Verdict ok={c.ok} yes={pretty(c.label)} no={pretty(c.label)} />{" "}{c.detail.startsWith("0x") ? <Hash v={c.detail} /> : <span className="hash muted keyline">answer key {c.detail}</span>}</li>
       ))}
     </ul>
   );
@@ -108,8 +113,8 @@ function Exam({ id }: { id: Hex }) {
   const before = !v.unlocked && now < v.unlockAt;
   return (
     <>
-      <h1>{v.manifest?.exam ?? "Exam"}</h1>
-      <p className="muted" style={{ marginTop: 10 }}><Hash v={v.id} n={10} /> by board <Hash v={v.onchain.board} kind="addr" n={4} /></p>
+      <h1>{examTitle(v.manifest?.exam, v.id)}</h1>
+      <p className="muted" style={{ marginTop: 10 }}>{v.onchain.revealed ? <Badge className="mr-2 bg-[var(--pen-tint)] text-[var(--pen)]">Fairness proven</Badge> : null}<Hash v={v.id} n={10} /> by board <Hash v={v.onchain.board} kind="addr" n={4} /></p>
 
       <div className="bell">
         <div className="when">{v.onchain.usingBackup ? "Backup paper B" : "Paper A"}, round {round}, bell at {utc(v.unlockAt)}</div>
@@ -119,6 +124,7 @@ function Exam({ id }: { id: Hex }) {
       </div>
 
       <section><h2>Centres</h2><Centres v={v} /></section>
+      <section><h2>Leaks</h2><Leaks v={v} /></section>
       <section className="grid2">
         <div><h2>What happened</h2>
           <ol className="timeline">
@@ -131,8 +137,7 @@ function Exam({ id }: { id: Hex }) {
           </ol>
         </div>
         <div>
-          <h2>Leaks</h2><Leaks v={v} />
-          <h2 style={{ marginTop: 40 }}>Fairness</h2>
+          <h2>Fairness</h2>
           <p className="muted small">Every centre gets the same questions in a different order. After the exam anyone can check that.</p>
           <Fairness v={v} />
         </div>

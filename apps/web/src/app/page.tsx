@@ -12,6 +12,7 @@ import { OmrField } from "@/components/OmrField";
 import { span, useAsync, useChainNow, useHead, useMounted } from "@/components/zh";
 import { allExams, registryState, revealOf } from "@/lib/overview";
 import { publicFile, type Reveal } from "@/lib/exam";
+import { centreLabel } from "@/lib/names";
 
 const Scene = dynamic(() => import("@/components/hero/HourglassScene"), { ssr: false, loading: () => <div className="scene-wait" aria-hidden /> });
 
@@ -223,7 +224,7 @@ function LeakHunter() {
         <div className="keys" aria-label="Answer keys of two real centre variants, first ten positions">
           {rows.map((r) => (
             <div key={r.name} className={r.name === leak?.name ? "keyrow leak" : "keyrow"}>
-              <span className="keyname">{r.name}</span>
+              <span className="keyname">Centre {centreLabel(r.name)}{r.name === leak?.name ? ", matches the leaked photo" : ""}</span>
               <div className="keycells">
                 {r.key.map((l, i) => (
                   <Tooltip key={i}>
@@ -320,7 +321,7 @@ export default function Landing() {
     return () => document.documentElement.classList.remove("is-landing");
   }, []);
   return (
-    <main>
+    <main id="content">
       <Hero />
       <Chain />
       <Locks />
