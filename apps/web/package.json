@@ -1,0 +1,39 @@
+{
+  "name": "@zerohour/web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ZeroHour consoles: live bell countdown, public release ledger, exam board view and in-browser centre opening, all read straight from QoreChain testnet",
+  "scripts": {
+    "sync": "node scripts/sync-public.mjs",
+    "dev": "npm run sync && next dev",
+    "build": "npm run sync && next build",
+    "start": "npx serve out",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@qorechain/qoreseal": "^0.1.0",
+    "@react-three/drei": "^10.7.9",
+    "@react-three/fiber": "^9.8.2",
+    "@zerohour/hourglass": "file:../../packages/hourglass",
+    "class-variance-authority": "^0.7.1",
+    "cn": "^0.4.0",
+    "lucide-react": "^1.73.0",
+    "next": "16.4.6",
+    "radix-ui": "^1.8.1",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "three": "^0.187.0",
+    "tw-animate-css": "^1.4.0",
+    "viem": "^2.57.20"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.5",
+    "@types/node": "^22.7.5",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@types/three": "^0.187.0",
+    "shadcn": "^4.23.0",
+    "tailwindcss": "^4.3.5",
+    "typescript": "^5.6.3"
+  }
+}
