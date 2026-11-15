@@ -237,13 +237,17 @@ contract ZeroHourExam {
         return e.usingBackup ? e.roundB : e.roundA;
     }
 
-    /// @notice True once >= threshold keypers have published the active round's seed.
+    /// @notice True once >= threshold keypers have revealed the active round's seed.
+    /// @dev A keyper's chain is public up to `nextRound - 1`: releasing a later round also
+    ///      reveals every earlier seed (seed[r-1] = keccak(seed[r])), even though `seedOf` only
+    ///      stores the round that was posted. So "revealed" means `round < nextRound`.
     function isUnlocked(bytes32 examId) public view returns (bool) {
         Exam storage e = _exam(examId);
         uint32 round = e.usingBackup ? e.roundB : e.roundA;
         uint256 n;
         for (uint256 i; i < e.keypers.length; ++i) {
-            if (hourglass.seedOf(e.keypers[i], round) != bytes32(0)) n++;
+            (,,,,, uint32 nextRound,,,,,) = hourglass.keypers(e.keypers[i]);
+            if (round < nextRound) n++;
         }
         return n >= e.threshold;
     }

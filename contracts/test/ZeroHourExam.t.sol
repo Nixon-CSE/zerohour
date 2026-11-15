@@ -196,4 +196,17 @@ contract ZeroHourExamTest is Test {
         zh.revealFairness(EXAM, CANON_A, SALT, s);
         assertTrue(zh.getExam(EXAM).revealed);
     }
+
+    /// Regression: a keyper that skips straight to a later round still counts — the later
+    /// seed hashes down to the exam round's seed, so the exam must unlock.
+    function test_unlocksWhenKeyperReleasesALaterRound() public {
+        _create();
+        _addCentre(centreA);
+        vm.warp(_time(ROUND_A + 3));
+        _release(0, ROUND_A + 3); // skips ROUND_A; seedOf(k0, ROUND_A) stays empty
+        _release(1, ROUND_A);
+        assertEq(reg.seedOf(keypers[0], ROUND_A), bytes32(0));
+        assertTrue(zh.isUnlocked(EXAM));
+        _open(centreA, false);
+    }
 }
