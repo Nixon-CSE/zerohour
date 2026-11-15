@@ -1,0 +1,69 @@
+{
+ "exam": "ZEROHOUR-DEMO-2026-11-15T16:21",
+ "examId": "0xe54bb5d08c756ff06bdeb69145566653781d71644beecc8c0c47e3abd6b2b1ed",
+ "chain": "qorechain-diana",
+ "zeroHourExam": "0x3494389A2C3BC5ea6cc0749F23C6a864aEE9c250",
+ "unlockA": "2026-11-15T16:30:00.000Z",
+ "timeline": [
+  {
+   "step": "createExam + addCentre x2 (board ML-DSA-87, relayed via exam-scoped window)",
+   "txs": {
+    "createExam": "0x98a849be6a8acb0af362a41b9ed62d0aa7f73ef94d562cac2cb9efeb07886f0f",
+    "addCentre:centre-pune-17": "0xb7a217c6ee03e6efaa8639cfc7329857d4d0e814bfc7b0283dcc9d09c2e31f1c",
+    "addCentre:centre-patna-05": "0xe7c1e9024092b7c78c747fcee66999f466e351c03098392ced0abf27c1c4c298"
+   }
+  },
+  {
+   "step": "open attempt before the bell",
+   "result": "locked: 0/2 keyper seeds released (no tx possible: recordOpening requires isUnlocked)"
+  },
+  {
+   "step": "keyper daemons release round 38 at the bell",
+   "releases": [
+    {
+     "keyper": 3,
+     "round": 38,
+     "tx": "0x09a4905dea0ae155dccd3a1d3415efc3227e8922ee496ac87aa89a5db889d797",
+     "block": "10144077",
+     "at": "2026-11-15T16:30:11.861Z",
+     "gasUsed": "77340"
+    },
+    {
+     "keyper": 2,
+     "round": 38,
+     "tx": "0x44eef20432999aa3e92433974115c5fbfeb6a2edc02b0a7713a5c68ad785d28f",
+     "block": "10144079",
+     "at": "2026-11-15T16:30:14.923Z",
+     "gasUsed": "77340"
+    },
+    {
+     "keyper": 1,
+     "round": 38,
+     "tx": "0x22fdada8fd4de5a7bad860bc295d33a53bf281c0c9f03b960e136c8c5a7d3e4b",
+     "block": "10144081",
+     "at": "2026-11-15T16:30:17.878Z",
+     "gasUsed": "76200"
+    }
+   ]
+  },
+  {
+   "step": "centres decrypt (ctHash checked) + ML-DSA-signed opening receipts",
+   "txs": {
+    "recordOpening:centre-pune-17": "0x950f10fcbcf4c09492904f6b2ebf5dbf6caf0855c4051a3fcd24e24a385fe706",
+    "recordOpening:centre-patna-05": "0xf5328d267eb8daadc5e0db4fef819ead6dba1dbcf51dea1fbe34a64eaa411e12"
+   }
+  },
+  {
+   "step": "Leak Hunter traces a 4-question photo (1 of 1000 centres, posterior 1.0) + signed reportLeak",
+   "txs": {
+    "reportLeak:centre-patna-05": "0x5913632d4ed0e7f7a36ba89fa5cb0a7426ee379bef0a6e74863ad148e5fbed89"
+   }
+  },
+  {
+   "step": "fairness reveal (canonical paper + permutation seeds published)",
+   "txs": {
+    "revealFairness": "0x64e793a4edcea0a2b64ac5809a66f64ebf6eb357fabf50317ade2b1ad5a6f734"
+   }
+  }
+ ]
+}

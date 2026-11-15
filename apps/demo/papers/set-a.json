@@ -1,0 +1,225 @@
+{
+ "title": "ZeroHour Mock — Biology (Set A)",
+ "questions": [
+  {
+   "id": "A01",
+   "text": "Which organelle carries out oxidative phosphorylation?",
+   "options": [
+    "Mitochondrion",
+    "Golgi body",
+    "Lysosome",
+    "Ribosome"
+   ],
+   "answer": 0
+  },
+  {
+   "id": "A02",
+   "text": "The functional unit of the kidney is the:",
+   "options": [
+    "Neuron",
+    "Nephron",
+    "Alveolus",
+    "Villus"
+   ],
+   "answer": 1
+  },
+  {
+   "id": "A03",
+   "text": "Which base is found in RNA but not in DNA?",
+   "options": [
+    "Thymine",
+    "Adenine",
+    "Uracil",
+    "Guanine"
+   ],
+   "answer": 2
+  },
+  {
+   "id": "A04",
+   "text": "Bundle sheath cells are prominent in leaves of:",
+   "options": [
+    "C3 plants",
+    "CAM plants only",
+    "C4 plants",
+    "Bryophytes"
+   ],
+   "answer": 2
+  },
+  {
+   "id": "A05",
+   "text": "Which hormone lowers blood glucose?",
+   "options": [
+    "Glucagon",
+    "Insulin",
+    "Adrenaline",
+    "Cortisol"
+   ],
+   "answer": 1
+  },
+  {
+   "id": "A06",
+   "text": "Crossing over occurs during which stage of meiosis I?",
+   "options": [
+    "Leptotene",
+    "Zygotene",
+    "Pachytene",
+    "Diakinesis"
+   ],
+   "answer": 2
+  },
+  {
+   "id": "A07",
+   "text": "The pacemaker of the human heart is the:",
+   "options": [
+    "AV node",
+    "SA node",
+    "Bundle of His",
+    "Purkinje fibres"
+   ],
+   "answer": 1
+  },
+  {
+   "id": "A08",
+   "text": "Which enzyme unwinds the DNA double helix during replication?",
+   "options": [
+    "Ligase",
+    "Primase",
+    "Helicase",
+    "Topoisomerase"
+   ],
+   "answer": 2
+  },
+  {
+   "id": "A09",
+   "text": "Root nodules of legumes fix nitrogen using:",
+   "options": [
+    "Nitrogenase",
+    "Nitrate reductase",
+    "Urease",
+    "Amylase"
+   ],
+   "answer": 0
+  },
+  {
+   "id": "A10",
+   "text": "The 'master gland' of the endocrine system is the:",
+   "options": [
+    "Thyroid",
+    "Adrenal",
+    "Pituitary",
+    "Pancreas"
+   ],
+   "answer": 2
+  },
+  {
+   "id": "A11",
+   "text": "Which blood vessel carries oxygenated blood from lungs to heart?",
+   "options": [
+    "Pulmonary artery",
+    "Pulmonary vein",
+    "Vena cava",
+    "Aorta"
+   ],
+   "answer": 1
+  },
+  {
+   "id": "A12",
+   "text": "Haploid number of chromosomes in a human gamete is:",
+   "options": [
+    "46",
+    "23",
+    "22",
+    "44"
+   ],
+   "answer": 1
+  },
+  {
+   "id": "A13",
+   "text": "Which plant tissue conducts water upward?",
+   "options": [
+    "Phloem",
+    "Xylem",
+    "Cambium",
+    "Cortex"
+   ],
+   "answer": 1
+  },
+  {
+   "id": "A14",
+   "text": "Bile is produced by the:",
+   "options": [
+    "Gall bladder",
+    "Pancreas",
+    "Liver",
+    "Duodenum"
+   ],
+   "answer": 2
+  },
+  {
+   "id": "A15",
+   "text": "The site of the light reactions of photosynthesis is the:",
+   "options": [
+    "Stroma",
+    "Thylakoid membrane",
+    "Cytosol",
+    "Outer membrane"
+   ],
+   "answer": 1
+  },
+  {
+   "id": "A16",
+   "text": "A test cross is a cross between an F1 hybrid and its:",
+   "options": [
+    "Dominant parent",
+    "Recessive parent",
+    "Sibling",
+    "F2 progeny"
+   ],
+   "answer": 1
+  },
+  {
+   "id": "A17",
+   "text": "Which vitamin is synthesised in skin on exposure to sunlight?",
+   "options": [
+    "Vitamin A",
+    "Vitamin C",
+    "Vitamin D",
+    "Vitamin K"
+   ],
+   "answer": 2
+  },
+  {
+   "id": "A18",
+   "text": "Antibodies are produced by:",
+   "options": [
+    "T-helper cells",
+    "Plasma cells",
+    "Neutrophils",
+    "Platelets"
+   ],
+   "answer": 1
+  },
+  {
+   "id": "A19",
+   "text": "Restriction enzymes cut DNA at:",
+   "options": [
+    "Random sites",
+    "Palindromic sequences",
+    "Only telomeres",
+    "Introns only"
+   ],
+   "answer": 1
+  },
+  {
+   "id": "A20",
+   "text": "The largest lymphatic organ in humans is the:",
+   "options": [
+    "Thymus",
+    "Tonsil",
+    "Spleen",
+    "Appendix"
+   ],
+   "answer": 2
+  }
+ ]
+}
