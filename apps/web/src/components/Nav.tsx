@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { HeadTick } from "./zh";
+import { ThemeToggle } from "./ThemeToggle";
 
 export const LINKS = [
   { href: "/live/", label: "Live bell" },
@@ -28,8 +29,9 @@ export function Nav() {
             <Link key={l.href} href={l.href} aria-current={here(l.href) ? "page" : undefined}>{l.label}</Link>
           ))}
         </nav>
-        <div className="ml-auto flex items-center gap-4">
-          <span className="hidden lg:flex"><HeadTick /></span>
+        <div className="ml-auto flex items-center gap-2">
+          <span className="hidden xl:flex"><HeadTick /></span>
+          <ThemeToggle className={home ? "text-white hover:bg-white/10 hover:text-white" : ""} />
           <Button asChild size="lg" className={cn("hidden sm:inline-flex", home && "bg-[var(--omr)] text-white hover:bg-[var(--omr)]/85")}>
             <Link href="/exam/?id=0xe54bb5d08c756ff06bdeb69145566653781d71644beecc8c0c47e3abd6b2b1ed">See a real exam</Link>
           </Button>

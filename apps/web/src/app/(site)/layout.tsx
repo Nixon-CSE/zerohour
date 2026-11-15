@@ -1,3 +1,3 @@
 export default function SiteLayout({ children }: { children: React.ReactNode }) {
-  return <main className="wrap">{children}</main>;
+  return <main id="content" className="wrap">{children}</main>;
 }
