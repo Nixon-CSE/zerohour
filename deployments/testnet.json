@@ -1,0 +1,33 @@
+{
+  "network": "qorechain-diana",
+  "evmChainId": 9800,
+  "evmRpc": "https://evm-testnet.qore.host",
+  "rest": "https://api-testnet.qore.host",
+  "contracts": {
+    "HourglassRegistry": {
+      "address": "0x5CF8c43C52483bF09F9a32D07a614250bd60f1AA",
+      "minBond": "1 QOR",
+      "exitDelay": "1 day"
+    },
+    "ZeroHourExam": {
+      "address": "0x3494389A2C3BC5ea6cc0749F23C6a864aEE9c250",
+      "deployBlock": 10140062,
+      "deployTx": "0x7cb6ec363c34c68203c4d383e7c0ca12fe15ac023c54218b3f046555701baf9e",
+      "hourglass": "0x5CF8c43C52483bF09F9a32D07a614250bd60f1AA"
+    }
+  },
+  "superseded": {
+    "ZeroHourExam@v0": {
+      "address": "0x81B12bE5a2f4D7342BC329cdcC34Ec02eD57f581",
+      "reason": "isUnlocked read seedOf(round) only; a keyper that released a later round first left the exam locked forever. v1 counts round < nextRound."
+    }
+  },
+  "keypers": [
+    {
+      "id": 1,
+      "address": "0x104C6d4f856f0e3CbC5c92474BF18AE19b882bc1",
+      "public": "deployments/keyper1.public.json",
+      "note": "also the Q-Day drill account (throwaway; its ECDSA key is given to the drill attacker)"
+    }
+  ]
+}
