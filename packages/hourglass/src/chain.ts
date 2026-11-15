@@ -10,10 +10,12 @@
  * rounds — so a release is final, compact (32 bytes) and verifiable by anyone.
  */
 import { mlkem1024, shake256 } from "@qorechain/pqc";
-import { keccak256 } from "viem";
+import { bytesToHex as vBytesToHex, hexToBytes as vHexToBytes, keccak256 } from "viem";
 
-export const hexToBytes = (h: string): Uint8Array => Uint8Array.from(Buffer.from(h.replace(/^0x/, ""), "hex"));
-export const bytesToHex = (b: Uint8Array): `0x${string}` => `0x${Buffer.from(b).toString("hex")}`;
+// Browser-safe (no Buffer): the same code runs in the keyper daemon and in the centre console.
+export const hexToBytes = (h: string): Uint8Array => vHexToBytes((h.startsWith("0x") ? h : `0x${h}`) as `0x${string}`);
+export const bytesToHex = (b: Uint8Array): `0x${string}` => vBytesToHex(b);
+export const bytesEqual = (a: Uint8Array, b: Uint8Array): boolean => a.length === b.length && a.every((x, i) => x === b[i]);
 export const k256 = (b: Uint8Array): Uint8Array => hexToBytes(keccak256(b));
 
 /** Seed for round `r` from the chain top (walks maxRound - r steps). */
@@ -32,7 +34,7 @@ export function anchorOf(top: Uint8Array, maxRound: number): Uint8Array {
 export function verifySeed(seed: Uint8Array, round: number, anchor: Uint8Array): boolean {
   let h = seed;
   for (let i = 0; i <= round; i++) h = k256(h);
-  return Buffer.from(h).equals(Buffer.from(anchor));
+  return bytesEqual(h, anchor);
 }
 
 export function roundKeypair(seed: Uint8Array): { publicKey: Uint8Array; secretKey: Uint8Array } {
@@ -72,7 +74,7 @@ export function verifyMerkle(leaf: Uint8Array, index: number, proof: Uint8Array[
     h = i & 1 ? k256(new Uint8Array([...sib, ...h])) : k256(new Uint8Array([...h, ...sib]));
     i >>= 1;
   }
-  return Buffer.from(h).equals(Buffer.from(root));
+  return bytesEqual(h, root);
 }
 
 export const pkLeaf = (publicKey: Uint8Array): Uint8Array => k256(publicKey);
