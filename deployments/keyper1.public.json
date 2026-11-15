@@ -1,0 +1,8 @@
+{
+  "registry": "0x5CF8c43C52483bF09F9a32D07a614250bd60f1AA",
+  "anchor": "0x31db190b8e8512e205b0bd2fb546653446fb0aca8edb6bbd36cd9c2c419342f2",
+  "pkRoot": "0x4424c5e505d1d3f4429f53e6bd1321ff97f2e1fa14e38a49fe37373ce0e85afd",
+  "genesis": 1794748800,
+  "roundSeconds": 300,
+  "maxRound": 8640
+}
