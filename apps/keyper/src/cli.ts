@@ -9,6 +9,7 @@
  *     --heartbeat N     also release the current round whenever N rounds are unrevealed
  *     --dry-run         plan and verify, never broadcast
  *   release-now         one-shot: release the current round (e.g. drill-day transaction)
+ *   export-pk R [R..]   print round R's ML-KEM-1024 public key + Merkle proof against pkRoot (JSON)
  *
  * Files live in $KEYPER_HOME (default ~/.zerohour-keyper); see src/config.ts.
  */
@@ -16,7 +17,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { weiToUqorCeil } from "@qorechain/evm";
 import { mldsa87 } from "@qorechain/pqc";
-import { bytesToHex, hexToBytes, k256, merkleRoot, pkLeaf, roundKeypair } from "@zerohour/hourglass";
+import { anchorOf, bytesToHex, hexToBytes, k256, merkleProof, merkleRoot, pkLeaf, roundKeypair, seedAt, verifyMerkle } from "@zerohour/hourglass";
 import { formatEther, toHex, type Hex } from "viem";
 import { contracts, net_, paths, tuning } from "./config.ts";
 import { run, type ChainSecret } from "./daemon.ts";
@@ -35,23 +36,36 @@ function loadSecret(): ChainSecret {
   return JSON.parse(readFileSync(paths.chain, "utf8"));
 }
 
-/** Commitments for a seed chain: anchor + Merkle root over all round ML-KEM-1024 public keys. */
-function commitments(top: Uint8Array, maxRound: number): { anchor: Hex; pkRoot: Hex } {
-  console.log(`deriving ${maxRound + 1} ML-KEM-1024 round keys (one-time, ~1 min)…`);
-  const leaves: Uint8Array[] = new Array(maxRound + 1);
-  let s = top;
-  for (let r = maxRound; r >= 0; r--) {
+/** keccak256(pk_r) for every round — public; cached in $KEYPER_HOME so proofs are instant. */
+function pkLeaves(secret: ChainSecret): Uint8Array[] {
+  if (existsSync(paths.leaves)) {
+    const c = JSON.parse(readFileSync(paths.leaves, "utf8"));
+    if (c.top === bytesToHex(k256(hexToBytes(secret.top))) && c.leaves.length === secret.maxRound + 1) return c.leaves.map(hexToBytes);
+  }
+  console.error(`deriving ${secret.maxRound + 1} ML-KEM-1024 round keys (one-time, ~1 min)…`);
+  const leaves: Uint8Array[] = new Array(secret.maxRound + 1);
+  let s = hexToBytes(secret.top);
+  for (let r = secret.maxRound; r >= 0; r--) {
     leaves[r] = pkLeaf(roundKeypair(s).publicKey);
     s = k256(s); // seed[r-1] = keccak256(seed[r])
   }
-  return { anchor: bytesToHex(k256(s)), pkRoot: bytesToHex(merkleRoot(leaves)) };
+  mkdirSync(dirname(paths.leaves), { recursive: true });
+  // `top` here is keccak(top): identifies the chain without revealing anything usable
+  writeFileSync(paths.leaves, JSON.stringify({ top: bytesToHex(k256(hexToBytes(secret.top))), leaves: leaves.map(bytesToHex) }));
+  return leaves;
+}
+
+/** Commitments for a seed chain: anchor + Merkle root over all round ML-KEM-1024 public keys. */
+function commitments(secret: ChainSecret): { anchor: Hex; pkRoot: Hex } {
+  const leaves = pkLeaves(secret);
+  return { anchor: bytesToHex(anchorOf(hexToBytes(secret.top), secret.maxRound)), pkRoot: bytesToHex(merkleRoot(leaves)) };
 }
 
 /** Load the seed chain, or create one: a single 32-byte secret; everything else is derived. */
 function loadOrCreateChain(): ChainSecret {
   if (existsSync(paths.chain)) return loadSecret();
   const top = crypto.getRandomValues(new Uint8Array(32));
-  const genesis = Math.ceil(Date.now() / 1000 / tuning.roundSeconds) * tuning.roundSeconds;
+  const genesis = tuning.genesis ?? Math.ceil(Date.now() / 1000 / tuning.roundSeconds) * tuning.roundSeconds;
   const secret = { top: toHex(top), maxRound: tuning.maxRound, genesis, roundSeconds: tuning.roundSeconds };
   mkdirSync(dirname(paths.chain), { recursive: true });
   writeFileSync(paths.chain, JSON.stringify(secret, null, 2), { mode: 0o600 });
@@ -76,7 +90,7 @@ const commands: Record<string, (a: string[]) => Promise<void>> = {
     if (rec.registered) return console.log("already a registered keyper — nothing more to do. Next: zerohour-keyper run");
 
     const secret = loadOrCreateChain();
-    const { anchor, pkRoot } = commitments(hexToBytes(secret.top), secret.maxRound);
+    const { anchor, pkRoot } = commitments(secret);
     writeFileSync(paths.public, JSON.stringify({ keyper: me, registry: contracts.hourglass, anchor, pkRoot, genesis: secret.genesis, roundSeconds: secret.roundSeconds, maxRound: secret.maxRound }, null, 2));
 
     const bond = await pub.readContract({ address: contracts.hourglass, abi: registryAbi, functionName: "minBond" });
@@ -115,6 +129,27 @@ const commands: Record<string, (a: string[]) => Promise<void>> = {
   async run(args) {
     const hb = opt(args, "--heartbeat");
     await run(await loadAccount(), loadSecret(), { dryRun: flag(args, "--dry-run"), once: flag(args, "--once"), heartbeatEvery: hb ? Number(hb) : tuning.heartbeatEvery });
+  },
+
+  /** Publish round public keys so a board can seal to them. Refuses rounds already revealed. */
+  async "export-pk"(args) {
+    const acc = await loadAccount();
+    const secret = loadSecret();
+    const rec = await keyperRecord(acc.evm as Hex);
+    if (!rec.registered) throw new Error("not registered");
+    const leaves = pkLeaves(secret);
+    const root = merkleRoot(leaves);
+    if (bytesToHex(root).toLowerCase() !== rec.pkRoot.toLowerCase()) throw new Error("local pk leaves do not match on-chain pkRoot");
+    const rounds = args.map(Number);
+    if (!rounds.length || rounds.some((r) => !Number.isInteger(r) || r < 0 || r > secret.maxRound)) throw new Error("usage: export-pk <round> [round…]");
+    const keys = rounds.map((round) => {
+      if (round < rec.nextRound) throw new Error(`round ${round} is already revealed — sealing to it would be pointless`);
+      const publicKey = roundKeypair(seedAt(hexToBytes(secret.top), secret.maxRound, round)).publicKey;
+      const proof = merkleProof(leaves, round);
+      if (!verifyMerkle(pkLeaf(publicKey), round, proof, root)) throw new Error("self-check failed");
+      return { round, publicKey: bytesToHex(publicKey), proof: proof.map(bytesToHex) };
+    });
+    console.log(JSON.stringify({ keyper: acc.evm, registry: contracts.hourglass, pkRoot: rec.pkRoot, genesis: rec.genesis, roundSeconds: rec.roundSeconds, keys }));
   },
 
   async "release-now"(args) {

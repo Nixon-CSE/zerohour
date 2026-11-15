@@ -21,6 +21,7 @@ export const paths = {
   public: resolve(HOME, "keyper.public.json"),
   state: resolve(HOME, "state.json"),
   log: resolve(HOME, "releases.jsonl"),
+  leaves: resolve(HOME, "pk-leaves.json"), // public: keccak256(pk_r) for every round
 };
 
 export const net_ = {
@@ -48,6 +49,7 @@ export const tuning = {
   bondWei: BigInt(env.BOND_WEI ?? 10n ** 18n),
   roundSeconds: Number(env.ROUND_SECONDS ?? 300),
   maxRound: Number(env.MAX_ROUND ?? 8640),
+  genesis: env.GENESIS ? Number(env.GENESIS) : undefined, // join an existing keyper clock (all keypers of an exam share it)
 };
 
 export const chain = defineChain({
