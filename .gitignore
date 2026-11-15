@@ -1,0 +1,14 @@
+node_modules/
+.env
+.env.*
+!.env.example
+# Foundry
+contracts/out/
+contracts/cache/
+contracts/lib/
+contracts/broadcast/*/31337/
+contracts/broadcast/**/*.lock
+# secrets produced by scripts — never commit
+secrets/
+*.secret.json
+.DS_Store
