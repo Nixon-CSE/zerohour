@@ -1,0 +1,58 @@
+/**
+ * Keyper configuration. Everything has a testnet default; override with env vars.
+ *
+ *   KEYPER_HOME      directory for this keyper's files (default ~/.zerohour-keyper)
+ *   KEYPER_ACCOUNT   account secret  (default $KEYPER_HOME/account.secret.json)  { mnemonic }
+ *   KEYPER_CHAIN     seed-chain secret (default $KEYPER_HOME/chain.secret.json) { top, maxRound, genesis, roundSeconds }
+ *   HOURGLASS / ZEROHOUR_EXAM / EXAM_FROM_BLOCK / QORE_EVM_RPC / QORE_REST_URL / QORE_RPC_URL
+ */
+import { homedir } from "node:os";
+import { resolve } from "node:path";
+import { getNetwork } from "@qorechain/sdk";
+import { defineChain, type Hex } from "viem";
+
+const env = process.env;
+const net = getNetwork("testnet");
+
+export const HOME = resolve(env.KEYPER_HOME ?? resolve(homedir(), ".zerohour-keyper"));
+export const paths = {
+  account: resolve(env.KEYPER_ACCOUNT ?? resolve(HOME, "account.secret.json")),
+  chain: resolve(env.KEYPER_CHAIN ?? resolve(HOME, "chain.secret.json")),
+  public: resolve(HOME, "keyper.public.json"),
+  state: resolve(HOME, "state.json"),
+  log: resolve(HOME, "releases.jsonl"),
+};
+
+export const net_ = {
+  chainId: net.chainId, // qorechain-diana
+  rest: env.QORE_REST_URL ?? net.endpoints.rest,
+  rpc: env.QORE_RPC_URL ?? net.endpoints.rpc,
+  evmRpc: env.QORE_EVM_RPC ?? "https://evm-testnet.qore.host",
+};
+
+export const contracts = {
+  hourglass: (env.HOURGLASS ?? "0x5CF8c43C52483bF09F9a32D07a614250bd60f1AA") as Hex,
+  exam: (env.ZEROHOUR_EXAM ?? "0x3494389A2C3BC5ea6cc0749F23C6a864aEE9c250") as Hex,
+  examFromBlock: BigInt(env.EXAM_FROM_BLOCK ?? "10140062"),
+};
+
+export const tuning = {
+  pollMs: Number(env.POLL_MS ?? 5_000),
+  safetySeconds: Number(env.SAFETY_SECONDS ?? 2),
+  heartbeatEvery: Number(env.HEARTBEAT_EVERY ?? 0), // rounds; 0 = only release exam rounds
+  maxFeeGwei: BigInt(env.MAX_FEE_GWEI ?? 500),
+  windowBlocks: BigInt(env.WINDOW_BLOCKS ?? 8_000),
+  windowTxs: BigInt(env.WINDOW_TXS ?? 20),
+  windowGasPerTx: BigInt(env.WINDOW_GAS_PER_TX ?? 1_500_000),
+  logChunk: BigInt(env.LOG_CHUNK ?? 5_000),
+  bondWei: BigInt(env.BOND_WEI ?? 10n ** 18n),
+  roundSeconds: Number(env.ROUND_SECONDS ?? 300),
+  maxRound: Number(env.MAX_ROUND ?? 8640),
+};
+
+export const chain = defineChain({
+  id: 9800,
+  name: "QoreChain Diana testnet",
+  nativeCurrency: { name: "QOR", symbol: "QOR", decimals: 18 },
+  rpcUrls: { default: { http: [net_.evmRpc] } },
+});
