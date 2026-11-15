@@ -1,0 +1,23 @@
+{
+  "name": "@zerohour/hourglass",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Hourglass: post-quantum, accountable time-lock encryption (ML-KEM-1024 round keys + Shamir t-of-n + QoreSeal recipient lock) and ZeroHour paper variants / leak tracing",
+  "main": "src/index.ts",
+  "scripts": {
+    "test": "node --import tsx --test test/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@qorechain/pqc": "^0.2.3",
+    "@qorechain/qoreseal": "^0.1.0",
+    "shamir-secret-sharing": "^0.0.4",
+    "viem": "^2.57.20"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.3"
+  }
+}
