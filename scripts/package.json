@@ -1,0 +1,23 @@
+{
+  "name": "zerohour-scripts",
+  "private": true,
+  "type": "module",
+  "description": "Account, PQC-key, EVM-window and keyper scripts for ZeroHour / Hourglass on QoreChain testnet",
+  "scripts": {
+    "account": "tsx drill.ts",
+    "typecheck": "tsc --noEmit",
+    "keyper": "tsx keyper.ts"
+  },
+  "dependencies": {
+    "@cosmjs/stargate": "^0.39.0",
+    "@qorechain/evm": "^0.14.0",
+    "@qorechain/pqc": "^0.2.3",
+    "@qorechain/sdk": "^0.14.0",
+    "viem": "^2.57.20"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.3"
+  }
+}
