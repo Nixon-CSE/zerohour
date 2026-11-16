@@ -30,6 +30,29 @@ npm run demo -- hunt leak.jpg                             # dry run via the Clau
 npm run demo -- hunt leak.jpg --reader claude-code --file # also seal the evidence and file reportLeak
 ```
 
+### Bribery: a keyper sells its seed and loses its bond
+
+Everything here is on testnet, with real accounts, a real bond and the honest keyper daemon.
+
+```bash
+npm run demo -- actors                       # adds the whistleblower: its own account and ML-DSA-87 key
+npm run demo -- keypers                      # keyper #4 joins the shared clock with a 1 QOR bond
+EXAM_STATE=bribery npm run demo -- exam --in 20 --keypers 1,2,4 --kind bribery
+# run the keyper daemons for #1, #2 and #4 (apps/keyper: npx tsx src/cli.ts run)
+EXAM_STATE=bribery npm run demo -- bribe 4   # keyper #4 hands its exam-round seed to a briber before the bell
+EXAM_STATE=bribery npm run demo -- whistleblow ../../secrets/demo/bribery/leak-k4-r<round>.json
+```
+
+1. **The bribe is real.** The seed is derived from keyper #4's own chain secret and checked against its
+   on-chain chain head before it changes hands.
+2. **It buys nothing alone.** The briber tries it on a published ciphertext and gets `locked: 1/2`.
+3. **Anyone holding it can cash it in.** The whistleblower commits a hash binding (keyper, round, seed,
+   salt, its own address), so nobody can copy the report from the mempool, then reveals.
+4. **The contract slashes.** It checks the seed against the keyper's committed chain and that the commit
+   came before the round opened, then sends half the bond to the whistleblower and burns the other half.
+5. **The keyper is finished, the exam is not.** Keyper #4's daemon sees the slash and stops for good;
+   the contract would refuse its releases anyway. At the bell keypers #1 and #2 open the exam as normal.
+
 ### How the Leak Hunter decides
 
 | Step | Done by | What it does |
