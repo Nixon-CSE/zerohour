@@ -22,7 +22,29 @@ npm run demo -- exam --in 10    # seal + createExam + addCentre; ciphertexts pub
 npm run demo -- open centre-pune-17     # before the bell: "locked: 0/2". After: decrypts and posts a signed receipt
 npm run demo -- leak centre-patna-05    # a 4-question "photo" is traced to 1 of 1,000 centres and a signed report is filed
 npm run demo -- reveal          # canonical paper + permutation seeds are published and fairness is proven on chain
+
+# Leak Hunter on a real image
+npm run demo -- photo centre-patna-05 --from 3 --to 7     # renders a page of that centre's copy to photograph
+npm run demo -- hunt leak.jpg --reader claude-code        # dry run via Claude Code (your Claude plan, no API credits)
+npm run demo -- hunt leak.jpg                             # dry run via the Claude API (ANTHROPIC_API_KEY in secrets/anthropic.env)
+npm run demo -- hunt leak.jpg --reader claude-code --file # also seal the evidence and file reportLeak
 ```
+
+### How the Leak Hunter decides
+
+| Step | Done by | What it does |
+|---|---|---|
+| Read | Claude Opus 5.5 (vision, structured output; through the Claude API or headless Claude Code, same instructions and JSON schema) | Transcribes printed question numbers, text and option order. It never sees the centre list or the variants, and never names a suspect |
+| Match | Code | Maps each transcribed question to the canonical paper by trigram similarity; weak or ambiguous matches are dropped |
+| Trace | Code (`packages/hourglass`) | Noisy-channel posterior over every centre's permutation (real centres plus simulated ones for scale) |
+| Decide | Code | Files only if the top match is a real centre at ≥ 99% posterior **and** the operator passed `--file` |
+
+The sealed evidence records the photo's keccak hash, the model id, the API response id and the raw
+transcription, so anyone holding the photo can rerun the match and trace and get the same answer.
+A test run on a tilted, slightly blurred photo of Patna-05's page read all five questions, matched each
+at 1.00, and named Patna-05 at posterior 1.000000 out of 1,000 centres (10/10 observations; the best
+simulated centre matched 5/10). `npm test` covers match, trace and decide without an API key (clean photo, OCR typos, one question,
+unrelated text, illegible photo, and a different centre's copy).
 
 ## What each step proves
 
