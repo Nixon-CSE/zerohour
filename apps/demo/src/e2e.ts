@@ -28,14 +28,15 @@ import { resolveRecipient } from "@qorechain/qoreseal/network";
 import { deriveUnifiedAccount } from "@qorechain/sdk";
 import { weiToUqorCeil } from "@qorechain/evm";
 import {
-  bytesToHex, hexToBytes, isFairVariant, k256, makeVariant, merkleRoot, openPaper, pkLeaf, sealPaper, sealedHash, traceLeak, verifyMerkle,
+  bytesToHex, hexToBytes, isFairVariant, k256, makeVariant, seedAt, merkleRoot, openPaper, pkLeaf, sealPaper, sealedHash, traceLeak, verifyMerkle,
   type Observation, type Paper, type SealedPaper,
 } from "@zerohour/hourglass";
 import { contracts, net_ } from "@zerohour/keyper/src/config.ts";
 import { openWindow, windowProblem, windowStatus } from "@zerohour/keyper/src/native.ts";
 import { fees, keyperRecord, pub, wallet } from "@zerohour/keyper/src/registry.ts";
 import { currentRound, roundTime } from "@zerohour/keyper/src/schedule.ts";
-import { parseAbi, toHex, type Hex } from "viem";
+import { formatEther, parseAbi, parseEventLogs, toHex, type Hex } from "viem";
+import { generateSealKeys } from "@qorechain/qoreseal";
 import { ACTORS, PUBLIC, ROOT, SECRETS, loadActor, setupActor, topUp, type Actor } from "./actors.ts";
 import { FILE_THRESHOLD, matchToPaper, readPhoto, readPhotoWithClaudeCode, traceAndDecide } from "./hunter.ts";
 
@@ -54,11 +55,19 @@ const examAbi = parseAbi([
   "function activeRound(bytes32) view returns (uint32)",
   "function centres(bytes32,address) view returns (bool registered, bytes32 ctHashA, bytes32 ctHashB, bytes32 permCommit, uint64 openedAt, uint32 leakReports)",
 ]);
-const registryAbi = parseAbi(["function seedOf(address,uint32) view returns (bytes32)"]);
+const registryAbi = parseAbi([
+  "function seedOf(address,uint32) view returns (bytes32)",
+  "function reportCommitment(address,uint32,bytes32,bytes32,address) pure returns (bytes32)",
+  "function commitReport(bytes32)",
+  "function revealReport(address,uint32,bytes32,bytes32)",
+  "function roundTime(address,uint32) view returns (uint256)",
+  "event KeyperSlashed(address indexed keyper, uint32 indexed round, bytes32 seed, address indexed reporter, uint256 reward)",
+]);
 
 const EXAM = contracts.exam;
 const KEYPER_CLI = resolve(ROOT, "apps/keyper/src/cli.ts");
-const STATE = resolve(SECRETS, "exam.json");
+/** One state file per exam: EXAM_STATE=bribery picks secrets/demo/exam-bribery.json. */
+const STATE = resolve(SECRETS, process.env.EXAM_STATE ? `exam-${process.env.EXAM_STATE}.json` : "exam.json");
 const enc = new TextEncoder();
 const cat = (...xs: Uint8Array[]) => new Uint8Array(xs.flatMap((x) => [...x]));
 const rand32 = () => crypto.getRandomValues(new Uint8Array(32));
@@ -75,6 +84,7 @@ const KEYPERS = [
   { id: 1, env: { KEYPER_HOME: "secrets/keyper1-home", KEYPER_ACCOUNT: "secrets/drill.secret.json", KEYPER_CHAIN: "secrets/keyper1.secret.json" } },
   { id: 2, env: { KEYPER_HOME: "secrets/keyper2-home" } },
   { id: 3, env: { KEYPER_HOME: "secrets/keyper3-home" } },
+  { id: 4, env: { KEYPER_HOME: "secrets/keyper4-home" } }, // joins for the bribery exam
 ];
 const THRESHOLD = 2;
 
@@ -114,6 +124,24 @@ async function relay(board: Actor, functionName: string, args: readonly unknown[
   if (rc.status !== "success") throw new Error(`${functionName} reverted: ${hash}`);
   say(`  ${functionName}: ${hash}  (gas ${rc.gasUsed})`);
   return hash;
+}
+
+/** Send a tx from `who`'s own account through an EVM window scoped to `target` only. */
+async function sendAs(who: Actor, target: Hex, abi: any, functionName: string, args: readonly unknown[]) {
+  const from = who.acc.evm as Hex;
+  const gas = ((await pub.estimateContractGas({ address: target, abi, functionName, args: args as any, account: from })) * 13n) / 10n;
+  const fee = await fees();
+  const cost = weiToUqorCeil(gas * fee.maxFeePerGas);
+  const why = windowProblem(await windowStatus(who.acc), target, cost);
+  if (why) {
+    const perTx = weiToUqorCeil(1_000_000n * fee.maxFeePerGas);
+    say(`  window (${why}) -> ${await openWindow(who.acc, [target], (perTx > cost ? perTx : cost) * 4n)}  [scoped to ${target === contracts.hourglass ? "HourglassRegistry" : target}]`);
+  }
+  const hash = await wallet(who.acc.privateKey as Hex).writeContract({ address: target, abi, functionName, args: args as any, gas, ...fee });
+  const rc = await pub.waitForTransactionReceipt({ hash, timeout: 120_000 });
+  if (rc.status !== "success") throw new Error(`${functionName} reverted: ${hash}`);
+  say(`  ${functionName}: ${hash}  (block ${rc.blockNumber}, gas ${rc.gasUsed})`);
+  return rc;
 }
 
 // ------------------------------------------------------------------ state
@@ -230,12 +258,16 @@ const commands: Record<string, (a: string[]) => Promise<void>> = {
   async exam(args) {
     if (existsSync(STATE)) throw new Error(`an exam already exists (${STATE}) — move it away to start a new one`);
     const minutes = numOpt(args, "--in", 10);
+    const ids = args.includes("--keypers") ? args[args.indexOf("--keypers") + 1].split(",").map(Number) : [1, 2, 3];
+    const chosen = KEYPERS.filter((k) => ids.includes(k.id));
+    if (chosen.length !== ids.length || chosen.length < THRESHOLD) throw new Error(`--keypers must name ${THRESHOLD}+ of ${KEYPERS.map((k) => k.id).join(",")}`);
+    const kind = (args.includes("--kind") ? args[args.indexOf("--kind") + 1] : "demo").toUpperCase().replace(/[^A-Z]/g, "");
     const board = await loadActor("board", "board");
     const hunter = await loadActor("leak-hunter", "hunter");
     const centres = await Promise.all(ACTORS.filter((a) => a.role === "centre").map((a) => loadActor(a.name, "centre")));
 
     // 1. keypers: same clock, round keys verified against each keyper's on-chain pkRoot
-    const keypers = await Promise.all(KEYPERS.map(keyperAddress));
+    const keypers = await Promise.all(chosen.map(keyperAddress));
     const recs = await Promise.all(keypers.map(keyperRecord));
     recs.forEach((r, i) => {
       if (!r.registered || r.slashed) throw new Error(`keyper #${i + 1} not usable`);
@@ -247,7 +279,7 @@ const commands: Record<string, (a: string[]) => Promise<void>> = {
     say(`exam rounds: A=${roundA} (${new Date(roundTime(recs[0], roundA) * 1000).toISOString()}), B=${roundB} (${new Date(roundTime(recs[0], roundB) * 1000).toISOString()})`);
 
     const roundKeys: Record<number, { keyper: string; publicKey: Uint8Array }[]> = { [roundA]: [], [roundB]: [] };
-    for (const [i, k] of KEYPERS.entries()) {
+    for (const [i, k] of chosen.entries()) {
       const out = JSON.parse(keyperCli(k, ["export-pk", String(roundA), String(roundB)]).trim().split("\n").pop()!);
       for (const key of out.keys) {
         const pk = hexToBytes(key.publicKey);
@@ -266,7 +298,7 @@ const commands: Record<string, (a: string[]) => Promise<void>> = {
     );
 
     // 3. per-centre variants, sealed with both locks
-    const label = `ZEROHOUR-DEMO-${new Date().toISOString().slice(0, 16)}`;
+    const label = `ZEROHOUR-${kind}-${new Date().toISOString().slice(0, 16)}`;
     const examId = bytesToHex(k256(enc.encode(label)));
     const [pA, pB] = [paper("a"), paper("b")];
     const st: ExamState = {
@@ -428,6 +460,71 @@ const commands: Record<string, (a: string[]) => Promise<void>> = {
       at: new Date().toISOString(),
     };
     await fileLeakReport(st, accused, evidence, verdict.top!.posterior, await loadActor("board", "board"), await loadActor("leak-hunter", "hunter"));
+  },
+
+  /**
+   * The corrupt keyper. It hands its seed for an exam round to a briber before the bell: one 32-byte
+   * value derived from its own chain secret, exactly what a real bribe would buy.
+   */
+  async bribe(args) {
+    const st = loadState();
+    const id = Number(args[0]);
+    const k = KEYPERS.find((x) => x.id === id) ?? (() => { throw new Error(`keyper ids: ${KEYPERS.map((x) => x.id).join(", ")}`); })();
+    const addr = await keyperAddress(k);
+    if (!st.keypers.some((x) => x.toLowerCase() === addr.toLowerCase())) throw new Error(`keyper #${id} is not a keyper of ${st.label}`);
+    const round = numOpt(args, "--round", st.roundA);
+    const secret = JSON.parse(readFileSync(resolve(ROOT, k.env.KEYPER_HOME, "chain.secret.json"), "utf8"));
+    const seed = seedAt(hexToBytes(secret.top), secret.maxRound, round);
+    const rec = await keyperRecord(addr);
+    let h = seed;
+    for (let r = round; r >= rec.nextRound; r--) h = k256(h);
+    if (bytesToHex(h) !== rec.lastHash.toLowerCase()) throw new Error("derived seed does not hash to the on-chain chain head");
+    const now = Number((await pub.getBlock()).timestamp);
+    const bell = roundTime(rec, round);
+    if (now >= bell) throw new Error(`round ${round} has already opened; a seed now is not a leak`);
+    say(`keyper #${id} (${addr}) hands its round ${round} seed to the briber, ${Math.round((bell - now) / 60)} min before the bell.`);
+    say(`  seed ${bytesToHex(seed)} hashes down to the keyper's on-chain chain head: it is the real seed.`);
+
+    // What the briber can do with it: nothing. One seed is one Shamir share; the paper needs THRESHOLD.
+    const c = st.centres[0];
+    const sealed: SealedPaper = JSON.parse(readFileSync(resolve(pubDir(st), `sealed/${c.name}-A.json`), "utf8"));
+    try {
+      await openPaper(sealed, { [addr]: seed }, generateSealKeys());
+      throw new Error("UNEXPECTED: the paper opened with one seed");
+    } catch (e) {
+      say(`  briber tries ${c.name}'s published ciphertext with it: ${(e as Error).message}`);
+    }
+    mkdirSync(resolve(SECRETS, "bribery"), { recursive: true });
+    const file = resolve(SECRETS, "bribery", `leak-k${id}-r${round}.json`);
+    writeFileSync(file, JSON.stringify({ examId: st.examId, keyper: addr, round, seed: bytesToHex(seed), handedOverAt: new Date(now * 1000).toISOString(), bell: new Date(bell * 1000).toISOString() }, null, 2), { mode: 0o600 });
+    say(`  the seed changes hands off chain: ${file}`);
+  },
+
+  /** Anyone who holds an early seed: commit (binds the reward to them), then reveal. The contract slashes. */
+  async whistleblow([file]) {
+    const st = loadState();
+    if (!file || !existsSync(file)) throw new Error("usage: npm run demo -- whistleblow <secrets/demo/bribery/leak-*.json>");
+    const leak = JSON.parse(readFileSync(file, "utf8")) as { keyper: Hex; round: number; seed: Hex };
+    const w = await loadActor("whistleblower", "watcher");
+    const before = await pub.getBalance({ address: w.acc.evm as Hex });
+    const bell = Number(await pub.readContract({ address: contracts.hourglass, abi: registryAbi, functionName: "roundTime", args: [leak.keyper, leak.round] }));
+    const now = Number((await pub.getBlock()).timestamp);
+    if (now >= bell) throw new Error("the round has opened; the seed is no longer evidence");
+    say(`whistleblower ${w.acc.evm} holds keyper ${leak.keyper}'s round ${leak.round} seed, ${Math.round((bell - now) / 60)} min before that round opens.`);
+    const salt = bytesToHex(rand32());
+    const commitment = await pub.readContract({ address: contracts.hourglass, abi: registryAbi, functionName: "reportCommitment", args: [leak.keyper, leak.round, leak.seed, salt, w.acc.evm as Hex] });
+    say(`1. commit (hides the seed and binds the reward to this account, so nobody can front-run it)`);
+    await sendAs(w, contracts.hourglass, registryAbi, "commitReport", [commitment]);
+    say(`2. reveal`);
+    const rc = await sendAs(w, contracts.hourglass, registryAbi, "revealReport", [leak.keyper, leak.round, leak.seed, salt]);
+    const ev = parseEventLogs({ abi: registryAbi, logs: rc.logs, eventName: "KeyperSlashed" })[0];
+    if (!ev) throw new Error("no KeyperSlashed event");
+    const after = await pub.getBalance({ address: w.acc.evm as Hex });
+    const rec = await keyperRecord(leak.keyper);
+    st.txs[`slash:${leak.keyper}`] = rc.transactionHash;
+    saveState(st);
+    say(`SLASHED: keyper ${leak.keyper} round ${leak.round}. Reward ${formatEther(ev.args.reward)} QOR to the whistleblower; the same amount burned.`);
+    say(`  keyper record now: slashed=${rec.slashed}, bond=${formatEther(rec.bond)} QOR. Whistleblower balance ${formatEther(before)} -> ${formatEther(after)} QOR (after gas).`);
   },
 
   async reveal() {

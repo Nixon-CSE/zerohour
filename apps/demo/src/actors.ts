@@ -22,7 +22,7 @@ export const ROOT = resolve(here, "../../..");
 export const SECRETS = resolve(ROOT, "secrets/demo");
 export const PUBLIC = resolve(ROOT, "deployments/demo");
 
-export type Role = "board" | "hunter" | "centre";
+export type Role = "board" | "hunter" | "centre" | "watcher";
 export interface Actor {
   name: string;
   role: Role;
@@ -35,6 +35,7 @@ export const ACTORS: { name: string; role: Role; fundQor: number }[] = [
   { name: "leak-hunter", role: "hunter", fundQor: 0.5 },
   { name: "centre-pune-17", role: "centre", fundQor: 0.5 },
   { name: "centre-patna-05", role: "centre", fundQor: 0.5 },
+  { name: "whistleblower", role: "watcher", fundQor: 0.3 }, // anyone who gets hold of an early seed
 ];
 
 export async function loadActor(name: string, role: Role, create = false): Promise<Actor> {
