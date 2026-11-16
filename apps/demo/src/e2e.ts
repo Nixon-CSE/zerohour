@@ -9,6 +9,9 @@
  *   (keypers run `zerohour-keyper run` — they pick the exam up from ExamCreated and release on time)
  *   npm run demo -- open <centre>       fetch released seeds from chain, check ctHash, decrypt, signed receipt
  *   npm run demo -- leak <centre> [--decoys N] [--no-file]   "leaked photo" of 4 questions -> trace -> signed reportLeak
+ *   npm run demo -- photo <centre> [--from N --to M]   render a page of that centre's paper as a test "leaked photo"
+ *   npm run demo -- hunt <photo> [--reader api|claude-code] [--decoys N] [--file]  Leak Hunter: Claude reads the photo, code traces it,
+ *                                       files a signed reportLeak only with --file and >= 99% posterior
  *   npm run demo -- reveal              publish canonical paper + permutation seeds; revealFairness on chain
  *   npm run demo -- status
  *
@@ -34,6 +37,7 @@ import { fees, keyperRecord, pub, wallet } from "@zerohour/keyper/src/registry.t
 import { currentRound, roundTime } from "@zerohour/keyper/src/schedule.ts";
 import { parseAbi, toHex, type Hex } from "viem";
 import { ACTORS, PUBLIC, ROOT, SECRETS, loadActor, setupActor, topUp, type Actor } from "./actors.ts";
+import { FILE_THRESHOLD, matchToPaper, readPhoto, readPhotoWithClaudeCode, traceAndDecide } from "./hunter.ts";
 
 const examAbi = parseAbi([
   "function createDigest(bytes32,address,address,address[],uint8,uint32,uint32,bytes32,bytes32,bytes32) view returns (bytes32)",
@@ -162,6 +166,37 @@ async function chainSeed(keyper: Hex, round: number): Promise<Uint8Array | null>
   let s = hexToBytes(rec.lastHash); // = seed[nextRound - 1]
   for (let r = rec.nextRound - 1; r > round; r--) s = k256(s);
   return s;
+}
+
+
+/**
+ * Seal the evidence to the board with QoreSeal, publish the envelope, and file reportLeak signed by
+ * the Leak Hunter's ML-DSA-87 key. Only the evidence hash and the envelope hash go on chain.
+ */
+async function fileLeakReport(st: ExamState, accused: CentreState, evidence: unknown, posterior: number, board: Actor, hunter: Actor) {
+  const evidenceBytes = enc.encode(JSON.stringify(evidence));
+  const evidenceHash = bytesToHex(k256(evidenceBytes));
+  const envelope = qsSeal({ chainId: net_.chainId, purpose: "zerohour-leak-evidence-v1", recipients: [recipientOf(board.seal)], plaintext: evidenceBytes });
+  const sealedRef = bytesToHex(k256(envelope));
+  writePublic(st, `leak-${evidenceHash.slice(0, 10)}.sealed.json`, { evidenceHash, sealedEvidenceRef: sealedRef, envelope: bytesToHex(envelope), sealedTo: "board (QoreSeal)" });
+  const bps = Math.min(10_000, Math.floor(posterior * 10_000));
+  const a = [st.examId, accused.evm, evidenceHash, bps, sealedRef] as const;
+  const key = st.txs[`reportLeak:${accused.name}`] ? `reportLeak:${accused.name}:${Date.now()}` : `reportLeak:${accused.name}`;
+  st.txs[key] = await relay(board, "reportLeak", [...a, await sign(hunter, await read<Hex>("leakDigest", a))]);
+  saveState(st);
+  say(`Leak Hunter (ML-DSA-87) attributed the leak to ${accused.name} at ${(bps / 100).toFixed(2)}%; evidence sealed to the board (${evidenceHash.slice(0, 10)}).`);
+}
+
+/** Simple HTML exam page for one centre's variant, used to make test "leaked photos". */
+function pageHtml(p: Paper, from: number, to: number) {
+  const esc = (x: string) => x.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]!);
+  const qs = p.questions.slice(from - 1, to).map((q, i) => `<li value="${from + i}"><p>${esc(q.text)}</p><ol type="A">${q.options.map((o) => `<li>${esc(o)}</li>`).join("")}</ol></li>`).join("");
+  return `<!doctype html><meta charset="utf-8"><style>
+body{margin:0;background:#d8d2c4;font:17px/1.5 Georgia,serif}
+.sheet{width:760px;margin:40px auto;padding:48px 56px;background:#fbfaf6;color:#222;transform:rotate(-2.2deg);box-shadow:0 18px 40px rgba(0,0,0,.35);filter:blur(.35px) contrast(1.05)}
+h1{font-size:20px;margin:0 0 4px}.sub{font-size:13px;color:#555;margin-bottom:18px;border-bottom:1px solid #999;padding-bottom:8px}
+ol.q>li{margin-bottom:16px}ol[type=A]{margin:6px 0 0;padding-left:24px}p{margin:0}
+</style><div class="sheet"><h1>${esc(p.title)}</h1><div class="sub">Time: 3 hours &nbsp; Maximum marks: 720 &nbsp; Page ${Math.ceil(from / 5)}</div><ol class="q">${qs}</ol></div>`;
 }
 
 // ------------------------------------------------------------------ commands
@@ -338,16 +373,61 @@ const commands: Record<string, (a: string[]) => Promise<void>> = {
     if (args.includes("--no-file")) return say("(--no-file: trace only, nothing filed)");
 
     const evidence = { examId: st.examId, set: set.toUpperCase(), observations: obs, ranking, method: "noisy-channel posterior over per-centre permutations, epsilon=0.05", at: new Date().toISOString() };
-    const evidenceBytes = enc.encode(JSON.stringify(evidence));
-    const evidenceHash = bytesToHex(k256(evidenceBytes));
-    const envelope = qsSeal({ chainId: net_.chainId, purpose: "zerohour-leak-evidence-v1", recipients: [recipientOf(board.seal)], plaintext: evidenceBytes });
-    const sealedRef = bytesToHex(k256(envelope));
-    writePublic(st, `leak-${evidenceHash.slice(0, 10)}.sealed.json`, { evidenceHash, sealedEvidenceRef: sealedRef, envelope: bytesToHex(envelope), sealedTo: "board (QoreSeal)" });
-    const bps = Math.min(10_000, Math.floor(top.posterior * 10_000));
-    const a = [st.examId, accused.evm, evidenceHash, bps, sealedRef] as const;
-    st.txs[`reportLeak:${accused.name}`] = await relay(board, "reportLeak", [...a, await sign(hunter, await read<Hex>("leakDigest", a))]);
-    saveState(st);
-    say(`Leak Hunter (ML-DSA-87) attributed the leak to ${accused.name} at ${(bps / 100).toFixed(2)}%; evidence sealed to the board.`);
+    await fileLeakReport(st, accused, evidence, top.posterior, board, hunter);
+  },
+
+  async photo(args) {
+    const st = loadState();
+    const name = args[0];
+    const c = st.centres.find((x) => x.name === name) ?? (() => { throw new Error(`centres: ${st.centres.map((x) => x.name).join(", ")}`); })();
+    const set = (await read<number>("activeRound", [st.examId])) === st.roundB ? "b" : "a";
+    const v = makeVariant(paper(set), c.name, hexToBytes(set === "a" ? c.permSeedA : c.permSeedB));
+    const from = numOpt(args, "--from", 3), to = numOpt(args, "--to", 7);
+    mkdirSync(resolve(SECRETS, "leaks"), { recursive: true });
+    const out = resolve(SECRETS, "leaks", `${c.name}-q${from}-${to}.html`);
+    writeFileSync(out, pageHtml(v.paper, from, to));
+    say(`wrote ${out}\nopen it, screenshot or photograph the page, then: npm run demo -- hunt <image>`);
+  },
+
+  async hunt(args) {
+    const st = loadState();
+    const photo = args[0];
+    if (!photo || !existsSync(photo)) throw new Error("usage: npm run demo -- hunt <photo.png|jpg> [--decoys N] [--file]");
+    const decoys = numOpt(args, "--decoys", 998);
+    const set = (await read<number>("activeRound", [st.examId])) === st.roundB ? "b" : "a";
+    const canonical = paper(set);
+
+    const reader = args.includes("--reader") ? args[args.indexOf("--reader") + 1] : "api";
+    if (reader !== "api" && reader !== "claude-code") throw new Error("--reader must be api or claude-code");
+    say(`1. reading the photo with Claude (vision, structured output, via ${reader === "api" ? "the Claude API" : "Claude Code"})…`);
+    const reading = reader === "api" ? await readPhoto(photo) : await readPhotoWithClaudeCode(photo);
+    const t = reading.transcription;
+    say(`   ${reading.model}, ${reading.usage.input} in / ${reading.usage.output} out tokens; ${t.questions.length} question(s) read${t.legible ? "" : " (marked illegible)"}`);
+    if (t.notes) say(`   notes: ${t.notes}`);
+
+    say(`2. matching the transcription to the canonical paper (code, no model)…`);
+    const { matched, observations } = matchToPaper(t, canonical);
+    for (const m of matched) say(`   Q${m.printedNumber}: ${m.dropped ? `dropped (${m.dropped})` : `${m.questionId}, text match ${m.textScore.toFixed(2)}${m.firstOption ? `, first option "${m.firstOption}"` : ""}`}`);
+
+    say(`3. tracing against ${st.centres.length} real + ${decoys} simulated centre variants…`);
+    const real = st.centres.map((c) => makeVariant(canonical, c.name, hexToBytes(set === "a" ? c.permSeedA : c.permSeedB)));
+    const simulated = Array.from({ length: decoys }, (_, i) => makeVariant(canonical, `simulated-centre-${i}`, rand32()));
+    const verdict = traceAndDecide(observations, real, simulated);
+    verdict.ranking.slice(0, 5).forEach((r) => say(`   ${r.centre.padEnd(22)} posterior ${r.posterior.toFixed(6)}  (${r.matches}/${r.observed})`));
+    say(`4. verdict: ${verdict.fileable ? "attributable" : "not attributable"}: ${verdict.reason}`);
+
+    if (!verdict.fileable) return;
+    if (!args.includes("--file")) return say(`   (dry run: add --file to seal the evidence and file reportLeak at >= ${FILE_THRESHOLD})`);
+    const accused = st.centres.find((c) => c.name === verdict.top!.centre)!;
+    const evidence = {
+      examId: st.examId, set: set.toUpperCase(), photoHash: reading.photoHash,
+      reader: { model: reading.model, responseId: reading.responseId, transcription: t },
+      matched, observations, ranking: verdict.ranking.slice(0, 10),
+      population: { real: verdict.realCentres, simulated: verdict.simulatedCentres },
+      method: "Claude transcribes; deterministic text match; noisy-channel posterior over per-centre permutations, epsilon=0.05",
+      at: new Date().toISOString(),
+    };
+    await fileLeakReport(st, accused, evidence, verdict.top!.posterior, await loadActor("board", "board"), await loadActor("leak-hunter", "hunter"));
   },
 
   async reveal() {
