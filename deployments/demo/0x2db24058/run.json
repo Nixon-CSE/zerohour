@@ -1,0 +1,62 @@
+{
+ "exam": "ZEROHOUR-BRIBERY-2026-11-16T11:59",
+ "examId": "0x2db24058ffccbd8251cc5cf93396a5d0c4c9dd0a8b6a2379bdfc7b064399c716",
+ "chain": "qorechain-diana",
+ "unlockA": "2026-11-16T12:15:00.000Z",
+ "story": "Keyper #4 sold its round-275 seed 15 minutes before the bell. The seed alone opened nothing (locked 1/2). A whistleblower committed and revealed it on chain; the contract slashed keyper #4 (0.5 QOR reward, 0.5 QOR burned). At the bell keypers #1 and #2 opened the exam as normal.",
+ "timeline": [
+  {
+   "step": "keyper #4 joins the shared clock with a 1 QOR bond",
+   "tx": "0xa9548cbd562a45195a3fbd032b8d47c4dc5367216e322f2e9fca26cb0a957a99"
+  },
+  {
+   "step": "createExam + addCentre x2 (keypers #1, #2, #4; threshold 2)",
+   "txs": {
+    "createExam": "0xdaea12773b57f31072e7d72bc96b9da9759a5190f1de814a82f6754d85bf1be3",
+    "addCentre:centre-pune-17": "0x540ae0a10107f8aca06be89e3dbbcd34e1486bddcdf0c2539d9d6ea29d443bd6",
+    "addCentre:centre-patna-05": "0xc6d3406cd36553232fd2c7feadf82402100b602d06cd8607789dfa1d4d9f1e8b"
+   }
+  },
+  {
+   "step": "keyper #4 hands its round 275 seed to a briber (off chain); briber's attempt: locked 1/2"
+  },
+  {
+   "step": "whistleblower commitReport + revealReport -> KeyperSlashed",
+   "whistleblower": "0xc6810e1EcCc39663D03b636388a3Db052978c7b8",
+   "txs": {
+    "commitReport": "0x388c48ebf7bbfb9a2f4d43e737a84f10d3ab062c7f4ec4376d25ba680a117b20",
+    "revealReport": "0xa5cdae7f10b9779531592c52bd03c5c51d5cd16becf679b95320939a75e7023a"
+   }
+  },
+  {
+   "step": "bell: keypers #1 and #2 release round 275",
+   "releases": [
+    {
+     "tx": "0x5028d78b4817f67940d522245149f324ffd8182ba86480e6cc50179b698a7cdc",
+     "block": "10193875",
+     "at": "2026-11-16T12:15:12.283Z",
+     "keyper": "keyper #2 (0x17aB\u20265BbA)"
+    },
+    {
+     "tx": "0x8844640ca610d5ba85600228c572d065a7e345de0f1e38b8a400c8f8ed9d45c1",
+     "block": "10193877",
+     "at": "2026-11-16T12:15:14.784Z",
+     "keyper": "keyper #1 (0x104C\u20262bc1)"
+    }
+   ]
+  },
+  {
+   "step": "centres decrypt + ML-DSA-signed receipts",
+   "txs": {
+    "recordOpening:centre-pune-17": "0xd86414e988335398f655104fdf6780fbcdc12992bf36bf5b33f83b69a51a5fdc",
+    "recordOpening:centre-patna-05": "0xf0bbc3413a0148f618499f9e1da18e716ad59888a083c74e62590194167566f8"
+   }
+  },
+  {
+   "step": "fairness reveal",
+   "txs": {
+    "revealFairness": "0x4ef32e91a600d4d25df0bcc23c2650b70a5605e26aae83996fb664700513dbed"
+   }
+  }
+ ]
+}

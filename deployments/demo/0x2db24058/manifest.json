@@ -1,0 +1,47 @@
+{
+  "exam": "ZEROHOUR-BRIBERY-2026-11-16T11:59",
+  "examId": "0x2db24058ffccbd8251cc5cf93396a5d0c4c9dd0a8b6a2379bdfc7b064399c716",
+  "contract": "0x3494389A2C3BC5ea6cc0749F23C6a864aEE9c250",
+  "hourglass": "0x5CF8c43C52483bF09F9a32D07a614250bd60f1AA",
+  "chain": "qorechain-diana",
+  "roundA": 275,
+  "roundB": 277,
+  "unlockA": "2026-11-16T12:15:00.000Z",
+  "unlockB": "2026-11-16T12:25:00.000Z",
+  "threshold": 2,
+  "keypers": [
+    "0x104C6d4f856f0e3CbC5c92474BF18AE19b882bc1",
+    "0x17aB3569aF1136D8CF22Ccc83b22ec73a4FE5BbA",
+    "0xb58eb855484f0C347121391f8d92f376899B9A8B"
+  ],
+  "board": "0xe1FD768beFA0516Ef3dBf7bFc80aAC471298F9dA",
+  "leakHunter": "0x1A691732d5056Af8628883732E4240817514Fde3",
+  "paperCommitA": "0x92d156abdd4725c90cabea016429a8f3e2f563389d208ced07ee40771c942dad",
+  "paperCommitB": "0xd2c9d004ac6aff8a03c41821a5265d9414916d2a3e8d6cefcbecf9cb2bcc0a36",
+  "manifestRoot": "0xce0afab1c3d216d564485930ac59cb202ce7d52364169349d227ff12f296a26b",
+  "centres": [
+    {
+      "name": "centre-pune-17",
+      "evm": "0x13e39273957F818746Fd38384374F3ff850E2E8f",
+      "cosmos": "qor1z03eyuu407qcw3ha8quyxa8nl7zsut508s53uc",
+      "ctHashA": "0x10b8e84c0bf1c2c7b323099bf09fa117ef988effae14cd3db0566a89ee8dd598",
+      "ctHashB": "0xbbabf0f40b6099b4e7d7b9ca9638287a2b8ddd395fac53dc508653978eb60039",
+      "sealedA": "sealed/centre-pune-17-A.json",
+      "sealedB": "sealed/centre-pune-17-B.json"
+    },
+    {
+      "name": "centre-patna-05",
+      "evm": "0xB82Be3565EA2C31475D791778F8C1eEF6338dce9",
+      "cosmos": "qor1hq47x4j75tp3gawhj9mclrq7aa3n3h8fxs327j",
+      "ctHashA": "0x9a84e445202332c205006a31218ae0f73eadab95c4b6dd30b829ab920008e3a5",
+      "ctHashB": "0x81b1e4df0941e28cd751e7d30c196550c0e5c15703e69f9e3bef5842d1aa78a0",
+      "sealedA": "sealed/centre-patna-05-A.json",
+      "sealedB": "sealed/centre-patna-05-B.json"
+    }
+  ],
+  "txs": {
+    "createExam": "0xdaea12773b57f31072e7d72bc96b9da9759a5190f1de814a82f6754d85bf1be3",
+    "addCentre:centre-pune-17": "0x540ae0a10107f8aca06be89e3dbbcd34e1486bddcdf0c2539d9d6ea29d443bd6",
+    "addCentre:centre-patna-05": "0xc6d3406cd36553232fd2c7feadf82402100b602d06cd8607789dfa1d4d9f1e8b"
+  }
+}
