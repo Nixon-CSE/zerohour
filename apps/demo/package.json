@@ -6,16 +6,19 @@
   "description": "End-to-end ZeroHour run on QoreChain testnet: actors, exam creation, two-lock sealing, keyper release, centre opening receipts, leak trace and fairness reveal",
   "scripts": {
     "demo": "tsx src/e2e.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test test/*.test.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.8.0",
     "@cosmjs/stargate": "^0.39.0",
     "@qorechain/pqc": "^0.2.3",
     "@qorechain/qoreseal": "^0.1.0",
     "@qorechain/sdk": "^0.14.0",
     "@zerohour/hourglass": "file:../../packages/hourglass",
     "@zerohour/keyper": "file:../keyper",
-    "viem": "^2.57.20"
+    "viem": "^2.57.20",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/node": "^22.7.5",
