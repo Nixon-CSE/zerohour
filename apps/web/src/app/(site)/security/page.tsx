@@ -6,7 +6,7 @@ export const metadata: Metadata = { title: "Security · ZeroHour" };
 const THREATS: [string, string, "live" | "next"][] = [
   ["Someone at the press, in transport or in a strongroom copies the paper", "They only ever hold ciphertext. The readable paper does not exist until the bell.", "live"],
   ["A centre tries to open early", "Its key opens only its own envelope, and the time half is missing until 2 keypers post. recordOpening reverts with NotUnlocked.", "live"],
-  ["One keyper leaks its seed early", "One seed opens nothing. Whoever holds the early seed can commit-reveal it and take half that keyper's bond.", "live"],
+  ["One keyper leaks its seed early", "One seed opens nothing. Whoever holds the early seed can commit-reveal it and take half that keyper's bond. This happened on testnet: a bribed keyper was slashed 14 minutes before its exam opened (see the release ledger).", "live"],
   ["Keypers collude", "They need the threshold of seeds before the bell, and each accomplice can betray the rest for half a bond. Cost grows with threshold and bond (calculator below).", "live"],
   ["A keyper is offline at the bell", "Any threshold of keypers opens it. If the paper itself is compromised, the board switches every centre to a backup paper sealed to a later round.", "live"],
   ["A centre leaks after opening", "Every centre's paper is a different permutation. A few questions from a photo name the centre; the Leak Hunter files a signed report.", "live"],

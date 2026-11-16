@@ -1,5 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
+import { formatEther } from "viem";
+import { Badge } from "@/components/ui/badge";
 import { Hash, ago, useAsync, useChainNow, utc } from "@/components/zh";
 import { registryState } from "@/lib/overview";
 
@@ -30,6 +32,29 @@ export default function Ledger() {
           <div><b>{median === null ? "n/a" : `${median} s`}</b><span>median delay after the round opens</span></div>
           <div><b className={reg.data.slashes.length ? "no" : ""}>{reg.data.slashes.length}</b><span>keypers slashed</span></div>
         </div>
+      )}
+
+      {reg.data && reg.data.slashes.length > 0 && (
+        <section style={{ marginTop: 32 }} aria-labelledby="slashed">
+          <h2 id="slashed">Slashed keypers</h2>
+          <p className="muted small">Someone proved on chain that they held this keyper&apos;s seed before its round opened. The bond is gone: half to the reporter, half burned. The keyper can never post again.</p>
+          <div className="cards mt-4">
+            {reg.data.slashes.map((x) => (
+              <article key={x.tx} className="card alert">
+                <header>
+                  <div><h3>Keyper <Hash v={x.keyper} kind="addr" n={4} /></h3><span className="muted small">{utc(x.time)}</span></div>
+                  <Badge variant="destructive">Slashed</Badge>
+                </header>
+                <dl>
+                  <div><dt>Leaked seed</dt><dd>Round {x.round}, proven {Math.round((x.unlockAt - x.time) / 60)} min before it opened</dd></div>
+                  <div><dt>Reported by</dt><dd><Hash v={x.reporter} kind="addr" n={4} /></dd></div>
+                  <div><dt>Reward</dt><dd>{formatEther(x.reward)} QOR to the reporter, {formatEther(x.reward)} QOR burned</dd></div>
+                  <div><dt>Slash</dt><dd><Hash v={x.tx} kind="tx" n={4} /></dd></div>
+                </dl>
+              </article>
+            ))}
+          </div>
+        </section>
       )}
 
       <section style={{ marginTop: 32 }}>

@@ -17,7 +17,9 @@ export interface Release {
 
 const decode = (l: any) => decodeEventLog({ abi: Object.values(EV), data: l.data, topics: l.topics });
 
-let keyperCache: Promise<{ keypers: KeyperRecord[]; releases: Release[]; slashes: { keyper: Hex; round: number; tx: Hex; reporter: Hex }[] }> | null = null;
+let keyperCache: Promise<{ keypers: KeyperRecord[]; releases: Release[]; slashes: Slash[] }> | null = null;
+
+export interface Slash { keyper: Hex; round: number; tx: Hex; reporter: Hex; reward: bigint; block: bigint; time: number; unlockAt: number }
 
 /** All keypers ever registered, their live records, and every release with its timing checked. */
 export function registryState(refresh = false) {
@@ -28,7 +30,7 @@ export function registryState(refresh = false) {
       const keypers = await Promise.all(addrs.map((a) => keyperRecord(a)));
       const byAddr = new Map(keypers.map((k) => [k.address.toLowerCase(), k]));
       const releases: Release[] = [];
-      const slashes: { keyper: Hex; round: number; tx: Hex; reporter: Hex }[] = [];
+      const slashes: Slash[] = [];
       for (const l of logs) {
         const d = decode(l);
         const a = d.args as any;
@@ -39,9 +41,9 @@ export function registryState(refresh = false) {
             keyper: a.keyper, round, seed: a.seed, tx: l.transactionHash!, block: l.blockNumber!, time: 0,
             unlockAt: roundTime(k, round), verified: verifySeed(hexToBytes(a.seed), round, hexToBytes(k.anchor)),
           });
-        } else if (d.eventName === "KeyperSlashed") slashes.push({ keyper: a.keyper, round: Number(a.round), tx: l.transactionHash!, reporter: a.reporter });
+        } else if (d.eventName === "KeyperSlashed") slashes.push({ keyper: a.keyper, round: Number(a.round), tx: l.transactionHash!, reporter: a.reporter, reward: a.reward, block: l.blockNumber!, time: 0, unlockAt: roundTime(k, Number(a.round)) });
       }
-      await Promise.all(releases.map(async (r) => (r.time = await blockTime(r.block))));
+      await Promise.all([...releases, ...slashes].map(async (r) => (r.time = await blockTime(r.block))));
       return { keypers, releases: releases.reverse(), slashes };
     })();
     keyperCache.catch(() => (keyperCache = null));
