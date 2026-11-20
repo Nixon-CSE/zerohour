@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {QorePQC} from "./QorePQC.sol";
 
-/// @title Hourglass — post-quantum, accountable time-lock keyper registry
+/// @title Hourglass v2 — post-quantum, accountable time-lock keyper registry
 /// @notice Each keyper commits to a backward hash chain of round seeds:
 ///             seed[r-1] = keccak256(seed[r]),  anchor = keccak256(seed[0])
 ///         Seed r deterministically derives that keyper's ML-KEM-1024 keypair for round r
@@ -48,6 +48,9 @@ contract HourglassRegistry {
     mapping(address => Keyper) public keypers;
     mapping(address => mapping(uint32 => bytes32)) public seedOf; // published seeds
     mapping(address => mapping(bytes32 => Report)) public reports; // reporter => commitment
+    /// v2: a keyper that withdrew is retired for good. Re-registering would leave stale
+    /// nextRound/exitAt and let old (public) exit/withdraw signatures be replayed.
+    mapping(address => bool) public retired;
 
     // ---------------------------------------------------------------- events
     event KeyperRegistered(
@@ -131,7 +134,7 @@ contract HourglassRegistry {
         bytes calldata pqcSignature
     ) external payable {
         Keyper storage k = keypers[keyper];
-        if (k.registered) revert AlreadyRegistered();
+        if (k.registered || retired[keyper]) revert AlreadyRegistered();
         if (msg.value < minBond || msg.value > type(uint128).max) revert BondTooSmall();
         if (anchor == bytes32(0) || roundSeconds == 0 || maxRound == 0) revert BadParams();
         bytes32 digest = registerDigest(keyper, anchor, pkRoot, genesis, roundSeconds, maxRound);
@@ -220,7 +223,8 @@ contract HourglassRegistry {
         if (!QorePQC.verifyBy(keyper, withdrawDigest(keyper, to), pqcSignature)) revert BadPqcSignature();
         uint256 amount = k.bond;
         k.bond = 0;
-        k.registered = false; // a keyper may re-register later with a fresh chain
+        k.registered = false;
+        retired[keyper] = true; // never again: a new chain needs a new account
         _send(to, amount);
         emit BondWithdrawn(keyper, to, amount);
     }

@@ -23,7 +23,9 @@ contract ZeroHourExamTest is Test {
     address[] keypers;
     mapping(address => bytes32[]) chain;
 
-    bytes32 constant EXAM = keccak256("NEET-MOCK-2026-SHIFT-1");
+    bytes32 constant LABEL = keccak256("NEET-MOCK-2026-SHIFT-1");
+    bytes32 constant PAPER = keccak256("the plaintext paper a centre decrypted");
+    bytes32 EXAM; // v2: derived from (board, LABEL)
     uint32 constant ROUND_A = 10;
     uint32 constant ROUND_B = 20;
     bytes32 constant CANON_A = keccak256("canonical paper A");
@@ -52,6 +54,7 @@ contract ZeroHourExamTest is Test {
             reg.register{value: 1 ether}(k, anchor, bytes32(0), genesis, ROUND_SECONDS, N, _sig(k, d));
         }
         _key(board);
+        EXAM = zh.examIdOf(board, LABEL);
         _key(hunter);
         _key(centreA);
         _key(centreB);
@@ -78,7 +81,7 @@ contract ZeroHourExamTest is Test {
         bytes32 commitA = keccak256(abi.encodePacked(CANON_A, SALT));
         bytes32 commitB = keccak256(abi.encodePacked(CANON_B, SALT));
         bytes32 d = zh.createDigest(EXAM, board, hunter, keypers, 2, ROUND_A, ROUND_B, commitA, commitB, bytes32("manifest"));
-        zh.createExam(EXAM, board, hunter, keypers, 2, ROUND_A, ROUND_B, commitA, commitB, bytes32("manifest"), _sig(board, d));
+        zh.createExam(LABEL, board, hunter, keypers, 2, ROUND_A, ROUND_B, commitA, commitB, bytes32("manifest"), _sig(board, d));
     }
 
     function _addCentre(address c) internal {
@@ -91,15 +94,15 @@ contract ZeroHourExamTest is Test {
     }
 
     function _open(address c, bool backup) internal {
-        bytes memory s = _sig(c, zh.openDigest(EXAM, c, backup));
-        zh.recordOpening(EXAM, c, s);
+        bytes memory s = _sig(c, zh.openDigest(EXAM, c, backup, PAPER));
+        zh.recordOpening(EXAM, c, PAPER, s);
     }
 
     // ------------------------------------------------------------ tests
     function test_create_requiresBoardPqcSignature() public {
         bytes32 commitA = keccak256(abi.encodePacked(CANON_A, SALT));
         vm.expectRevert(ZeroHourExam.BadPqcSignature.selector);
-        zh.createExam(EXAM, board, hunter, keypers, 2, ROUND_A, ROUND_B, commitA, commitA, bytes32(0), hex"00");
+        zh.createExam(LABEL, board, hunter, keypers, 2, ROUND_A, ROUND_B, commitA, commitA, bytes32(0), hex"00");
         _create();
         assertEq(zh.getExam(EXAM).threshold, 2);
     }
@@ -118,16 +121,16 @@ contract ZeroHourExamTest is Test {
         _addCentre(centreA);
         vm.warp(_time(ROUND_A));
         _release(0, ROUND_A); // 1 of 3 — below threshold 2
-        bytes memory s = _sig(centreA, zh.openDigest(EXAM, centreA, false));
+        bytes memory s = _sig(centreA, zh.openDigest(EXAM, centreA, false, PAPER));
         vm.expectRevert(ZeroHourExam.NotUnlocked.selector);
-        zh.recordOpening(EXAM, centreA, s);
+        zh.recordOpening(EXAM, centreA, PAPER, s);
         _release(1, ROUND_A); // 2 of 3
         assertTrue(zh.isUnlocked(EXAM));
-        zh.recordOpening(EXAM, centreA, s);
+        zh.recordOpening(EXAM, centreA, PAPER, s);
         (,,,, uint64 openedAt,) = zh.centres(EXAM, centreA);
         assertEq(openedAt, _time(ROUND_A));
         vm.expectRevert(ZeroHourExam.AlreadyOpened.selector);
-        zh.recordOpening(EXAM, centreA, s);
+        zh.recordOpening(EXAM, centreA, PAPER, s);
     }
 
     function test_openingNeedsCentrePqcKey_notClassicalKey() public {
@@ -138,7 +141,7 @@ contract ZeroHourExamTest is Test {
         _release(2, ROUND_A);
         vm.prank(centreA); // the classical key alone
         vm.expectRevert(ZeroHourExam.BadPqcSignature.selector);
-        zh.recordOpening(EXAM, centreA, hex"00");
+        zh.recordOpening(EXAM, centreA, PAPER, hex"00");
     }
 
     function test_backupSwitch_movesEveryCentreToSetB() public {
@@ -208,5 +211,78 @@ contract ZeroHourExamTest is Test {
         assertEq(reg.seedOf(keypers[0], ROUND_A), bytes32(0));
         assertTrue(zh.isUnlocked(EXAM));
         _open(centreA, false);
+    }
+
+    // ------------------------------------------------------------ v2 regressions (audit, 20 Nov)
+    /// Expects `err` (if non-empty) from createExam itself, not from the helper's view calls.
+    function _createWith(bytes32 label, address[] memory ks, uint8 t, uint32 a, uint32 b, bytes memory err) internal {
+        bytes32 id = zh.examIdOf(board, label);
+        bytes memory sig = _sig(board, zh.createDigest(id, board, hunter, ks, t, a, b, 0, 0, 0));
+        if (err.length > 0) vm.expectRevert(err);
+        zh.createExam(label, board, hunter, ks, t, a, b, 0, 0, 0, sig);
+    }
+
+    /// Audit M3: the id is bound to the board, so a squatter using the same label gets its own id.
+    function test_v2_examIdCannotBeSquatted() public {
+        _key(attacker);
+        bytes32 squatId = zh.examIdOf(attacker, LABEL);
+        zh.createExam(LABEL, attacker, attacker, keypers, 2, ROUND_A, ROUND_B, 0, 0, 0,
+            _sig(attacker, zh.createDigest(squatId, attacker, attacker, keypers, 2, ROUND_A, ROUND_B, 0, 0, 0)));
+        assertTrue(squatId != EXAM);
+        _create(); // the real board is unaffected
+        assertEq(zh.getExam(EXAM).board, board);
+    }
+
+    /// Audit M2: a duplicated keyper would let one seed meet a threshold of 2.
+    function test_v2_duplicateKeypersRejected() public {
+        address[] memory ks = new address[](2);
+        ks[0] = keypers[0];
+        ks[1] = keypers[0];
+        _createWith("dup", ks, 2, ROUND_A, ROUND_B, abi.encodeWithSelector(ZeroHourExam.BadKeyper.selector, keypers[0]));
+    }
+
+    function test_v2_unregisteredOrSlashedKeyperRejected() public {
+        address[] memory ks = new address[](2);
+        ks[0] = keypers[0];
+        ks[1] = attacker; // never registered
+        _createWith("unreg", ks, 2, ROUND_A, ROUND_B, abi.encodeWithSelector(ZeroHourExam.BadKeyper.selector, attacker));
+        // slash keyper 1, then it cannot be listed
+        bytes32 c = reg.reportCommitment(keypers[1], ROUND_A, chain[keypers[1]][ROUND_A], bytes32("s"), attacker);
+        vm.prank(attacker);
+        reg.commitReport(c);
+        vm.prank(attacker);
+        reg.revealReport(keypers[1], ROUND_A, chain[keypers[1]][ROUND_A], bytes32("s"));
+        ks[1] = keypers[1];
+        _createWith("slashed", ks, 2, ROUND_A, ROUND_B, abi.encodeWithSelector(ZeroHourExam.BadKeyper.selector, keypers[1]));
+    }
+
+    function test_v2_roundsMustBeInTheFutureAndInsideEveryChain() public {
+        _createWith("beyond", keypers, 2, ROUND_A, N + 1, abi.encodeWithSelector(ZeroHourExam.BadKeyper.selector, keypers[0]));
+        _createWith("ok", keypers, 2, ROUND_A, ROUND_B, "");
+        vm.warp(_time(ROUND_A));
+        _createWith("past", keypers, 2, ROUND_A, ROUND_B, abi.encodeWithSelector(ZeroHourExam.TooLate.selector));
+    }
+
+    /// Audit L1 + H3: receipts are per set and carry the decrypted paper's hash, so a centre that
+    /// opened A can still sign for B after a switch, and the reveal can be checked against it.
+    function test_v2_receiptPerSetCarriesPaperHash() public {
+        _create();
+        _addCentre(centreA);
+        _addCentre(centreB);
+        vm.warp(_time(ROUND_A));
+        _release(0, ROUND_A);
+        _release(1, ROUND_A);
+        _open(centreA, false);
+        assertEq(zh.receiptOf(EXAM, centreA, false), PAPER);
+        bytes32 reason = keccak256("leak after A opened");
+        zh.switchToBackup(EXAM, reason, _sig(board, zh.switchDigest(EXAM, reason)));
+        vm.warp(_time(ROUND_B));
+        _release(0, ROUND_B);
+        _release(2, ROUND_B);
+        bytes32 paperB = keccak256("paper B as decrypted");
+        zh.recordOpening(EXAM, centreA, paperB, _sig(centreA, zh.openDigest(EXAM, centreA, true, paperB)));
+        assertEq(zh.receiptOf(EXAM, centreA, true), paperB);
+        vm.expectRevert(ZeroHourExam.BadParams.selector);
+        zh.recordOpening(EXAM, centreB, bytes32(0), hex"00"); // a receipt must name the paper it opened
     }
 }

@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 import {QorePQC} from "./QorePQC.sol";
 import {HourglassRegistry} from "./HourglassRegistry.sol";
 
-/// @title ZeroHour — exam papers nobody can open before the bell
+/// @title ZeroHour v2 — exam papers no centre can open before the bell
 /// @notice Each exam centre receives its own permuted variant of the paper, encrypted with
 ///         two locks: an Hourglass time-lock (t-of-n keyper seeds for the start round) and a
 ///         QoreSeal recipient lock to the centre's registered ML-KEM-1024 key. This contract
@@ -47,11 +47,15 @@ contract ZeroHourExam {
     mapping(bytes32 => Exam) internal exams;
     mapping(bytes32 => mapping(address => Centre)) public centres;
     mapping(bytes32 => address[]) internal centreList;
+    /// v2: per-set signed receipt = keccak256 of the plaintext paper the centre decrypted.
+    ///     After the fairness reveal anyone can rebuild each centre's copy and compare.
+    mapping(bytes32 => mapping(address => mapping(bool => bytes32))) public receiptOf;
+    uint256 public constant MAX_KEYPERS = 32;
 
     event ExamCreated(bytes32 indexed examId, address indexed board, uint32 roundA, uint32 roundB, uint8 threshold, address[] keypers);
     event CentreAdded(bytes32 indexed examId, address indexed centre, bytes32 ctHashA, bytes32 ctHashB, bytes32 permCommit);
     event SwitchedToBackup(bytes32 indexed examId, bytes32 reasonHash);
-    event PaperOpened(bytes32 indexed examId, address indexed centre, bool backup, uint64 at);
+    event PaperOpened(bytes32 indexed examId, address indexed centre, bool backup, uint64 at, bytes32 paperHash);
     event LeakReported(bytes32 indexed examId, address indexed centre, bytes32 evidenceHash, uint16 confidenceBps, bytes32 sealedEvidenceRef);
     event FairnessRevealed(bytes32 indexed examId, bytes32 canonicalPaperHash, bytes32 salt);
 
@@ -67,6 +71,7 @@ contract ZeroHourExam {
     error AlreadyRevealed();
     error CommitMismatch();
     error NotOver();
+    error BadKeyper(address keyper);
 
     constructor(HourglassRegistry hourglass_) {
         hourglass = hourglass_;
@@ -105,8 +110,13 @@ contract ZeroHourExam {
         return keccak256(abi.encode(SWITCH_TAG, block.chainid, address(this), examId, reasonHash));
     }
 
-    function openDigest(bytes32 examId, address centre, bool backup) public view returns (bytes32) {
-        return keccak256(abi.encode(OPEN_TAG, block.chainid, address(this), examId, centre, backup));
+    function openDigest(bytes32 examId, address centre, bool backup, bytes32 paperHash) public view returns (bytes32) {
+        return keccak256(abi.encode(OPEN_TAG, block.chainid, address(this), examId, centre, backup, paperHash));
+    }
+
+    /// @notice v2: an exam id is bound to its board, so nobody can squat a predictable id.
+    function examIdOf(address board, bytes32 label) public pure returns (bytes32) {
+        return keccak256(abi.encode(board, label));
     }
 
     function leakDigest(bytes32 examId, address centre, bytes32 evidenceHash, uint16 confidenceBps, bytes32 sealedEvidenceRef)
@@ -125,7 +135,7 @@ contract ZeroHourExam {
 
     // ============================================================ board actions
     function createExam(
-        bytes32 examId,
+        bytes32 label,
         address board,
         address leakHunter,
         address[] calldata keypers,
@@ -137,8 +147,12 @@ contract ZeroHourExam {
         bytes32 manifestRoot,
         bytes calldata boardSig
     ) external {
+        bytes32 examId = examIdOf(board, label);
         if (exams[examId].board != address(0)) revert ExamExists();
-        if (board == address(0) || threshold == 0 || threshold > keypers.length || roundB <= roundA) revert BadParams();
+        if (board == address(0) || threshold == 0 || threshold > keypers.length || keypers.length > MAX_KEYPERS || roundB <= roundA) {
+            revert BadParams();
+        }
+        _checkKeypers(keypers, roundA, roundB);
         bytes32 d = createDigest(examId, board, leakHunter, keypers, threshold, roundA, roundB, paperCommitA, paperCommitB, manifestRoot);
         if (!QorePQC.verifyBy(board, d, boardSig)) revert BadPqcSignature();
         Exam storage e = exams[examId];
@@ -199,15 +213,18 @@ contract ZeroHourExam {
     // ============================================================ centre + agent actions
     /// @notice Signed opening receipt. Only possible once the active set's round is unlocked
     ///         on Hourglass (>= threshold keyper seeds published) — proof no centre opened early.
-    function recordOpening(bytes32 examId, address centre, bytes calldata centreSig) external {
+    function recordOpening(bytes32 examId, address centre, bytes32 paperHash, bytes calldata centreSig) external {
         Exam storage e = _exam(examId);
         Centre storage c = centres[examId][centre];
         if (!c.registered) revert UnknownCentre();
-        if (c.openedAt != 0) revert AlreadyOpened();
+        bool backup = e.usingBackup;
+        if (receiptOf[examId][centre][backup] != bytes32(0)) revert AlreadyOpened();
+        if (paperHash == bytes32(0)) revert BadParams();
         if (!isUnlocked(examId)) revert NotUnlocked();
-        if (!QorePQC.verifyBy(centre, openDigest(examId, centre, e.usingBackup), centreSig)) revert BadPqcSignature();
+        if (!QorePQC.verifyBy(centre, openDigest(examId, centre, backup, paperHash), centreSig)) revert BadPqcSignature();
+        receiptOf[examId][centre][backup] = paperHash;
         c.openedAt = uint64(block.timestamp);
-        emit PaperOpened(examId, centre, e.usingBackup, uint64(block.timestamp));
+        emit PaperOpened(examId, centre, backup, uint64(block.timestamp), paperHash);
     }
 
     /// @notice Leak Hunter files an ML-DSA-signed attribution: the leaked copy's fingerprint
@@ -264,6 +281,21 @@ contract ZeroHourExam {
     ///      are expected to share genesis/roundSeconds; the board checks this off-chain).
     function _unlockTime(Exam storage e, bool backup) private view returns (uint256) {
         return hourglass.roundTime(e.keypers[0], backup ? e.roundB : e.roundA);
+    }
+
+    /// @dev v2: distinct, registered, unslashed keypers on one clock whose chains cover both
+    ///      rounds, and a bell still in the future. Duplicates would fake the threshold.
+    function _checkKeypers(address[] calldata keypers, uint32 roundA, uint32 roundB) private view {
+        (,, uint64 genesis0, uint32 seconds0,,,,,,,) = hourglass.keypers(keypers[0]);
+        for (uint256 i; i < keypers.length; ++i) {
+            for (uint256 j; j < i; ++j) if (keypers[j] == keypers[i]) revert BadKeyper(keypers[i]);
+            (,, uint64 genesis, uint32 roundSeconds, uint32 maxRound, uint32 nextRound,,,, bool slashed, bool registered) =
+                hourglass.keypers(keypers[i]);
+            if (!registered || slashed || genesis != genesis0 || roundSeconds != seconds0 || roundB > maxRound || roundA < nextRound) {
+                revert BadKeyper(keypers[i]);
+            }
+        }
+        if (block.timestamp >= uint256(genesis0) + uint256(roundA) * seconds0) revert TooLate();
     }
 
     function _exam(bytes32 examId) private view returns (Exam storage e) {

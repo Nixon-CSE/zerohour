@@ -212,4 +212,29 @@ contract HourglassRegistryTest is Test {
         vm.stopPrank();
         assertEq(address(reg).balance, MIN_BOND);
     }
+
+    // ------------------------------------------------------------ v2 regressions (audit, 20 Nov)
+    /// Audit M1: re-registering left exitAt/nextRound stale, so the old public withdraw signature
+    /// could be replayed to pull a fresh bond out at once. v2 retires a keyper on withdrawal.
+    function test_v2_withdrawnKeyperCanNeverReRegister() public {
+        _register();
+        reg.requestExit(keyper, _sig(reg.exitDigest(keyper)));
+        vm.warp(block.timestamp + EXIT_DELAY);
+        reg.withdraw(keyper, keyper, _sig(reg.withdrawDigest(keyper, keyper)));
+        assertTrue(reg.retired(keyper));
+        bytes32 d = reg.registerDigest(keyper, _anchor(), bytes32("pkroot"), genesis, ROUND_SECONDS, N);
+        vm.expectRevert(HourglassRegistry.AlreadyRegistered.selector);
+        reg.register{value: MIN_BOND}(keyper, _anchor(), bytes32("pkroot"), genesis, ROUND_SECONDS, N, _sig(d));
+    }
+
+    function test_v2_oldWithdrawSignatureCannotBeReplayed() public {
+        _register();
+        reg.requestExit(keyper, _sig(reg.exitDigest(keyper)));
+        vm.warp(block.timestamp + EXIT_DELAY);
+        bytes memory sig = _sig(reg.withdrawDigest(keyper, keyper));
+        reg.withdraw(keyper, keyper, sig);
+        vm.prank(attacker);
+        vm.expectRevert(HourglassRegistry.NotRegistered.selector);
+        reg.withdraw(keyper, keyper, sig);
+    }
 }
