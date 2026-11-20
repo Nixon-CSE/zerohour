@@ -53,6 +53,30 @@ EXAM_STATE=bribery npm run demo -- whistleblow ../../secrets/demo/bribery/leak-k
 5. **The keyper is finished, the exam is not.** Keyper #4's daemon sees the slash and stops for good;
    the contract would refuse its releases anyway. At the bell keypers #1 and #2 open the exam as normal.
 
+### Backup switch: paper A leaks from the setting room
+
+```bash
+EXAM_STATE=backup npm run demo -- exam --kind backup --in 20 --gap 3   # B's bell 3 rounds (15 min) after A's
+# run the keyper daemons for #1, #2 and #3
+EXAM_STATE=backup npm run demo -- photo --master --from 8 --to 12       # a page of the setters' master copy
+EXAM_STATE=backup npm run demo -- hunt <image> --reader claude-code     # verdict: pre-distribution leak
+EXAM_STATE=backup npm run demo -- switch ../../secrets/demo/leaks/switch-evidence-<hash>.json
+# after B's bell
+EXAM_STATE=backup npm run demo -- open centre-pune-17 && EXAM_STATE=backup npm run demo -- open centre-patna-05
+EXAM_STATE=backup npm run demo -- reveal
+```
+
+1. **The leak names its own source.** Every centre's copy has its own question and option order; the
+   setters' master copy has the canonical order, which no centre ever receives. The Leak Hunter traces
+   the photo against the master copy as well as every centre. A match on the master copy before the bell
+   means the leak predates sealing, so no centre is accused.
+2. **The AI recommends, the board decides.** `hunt` only writes the evidence file. The board runs `switch`,
+   which signs `switchToBackup` with its ML-DSA-87 key. The reason on chain is keccak256 of the evidence
+   file, and the file is published unchanged, so anyone can re-hash it (the exam page does this in the browser).
+3. **One transaction moves every centre.** Backup paper B was sealed per centre at creation, to a later
+   round. The contract refuses the switch once B's round is due.
+4. **B opens at its own bell** with the same keypers, and the fairness reveal covers paper B.
+
 ### How the Leak Hunter decides
 
 | Step | Done by | What it does |
@@ -60,14 +84,14 @@ EXAM_STATE=bribery npm run demo -- whistleblow ../../secrets/demo/bribery/leak-k
 | Read | Claude Opus 5.5 (vision, structured output; through the Claude API or headless Claude Code, same instructions and JSON schema) | Transcribes printed question numbers, text and option order. It never sees the centre list or the variants, and never names a suspect |
 | Match | Code | Maps each transcribed question to the canonical paper by trigram similarity; weak or ambiguous matches are dropped |
 | Trace | Code (`packages/hourglass`) | Noisy-channel posterior over every centre's permutation (real centres plus simulated ones for scale) |
-| Decide | Code | Files only if the top match is a real centre at ≥ 99% posterior **and** the operator passed `--file` |
+| Decide | Code | Files only if the top match is a real centre at ≥ 99% posterior **and** the operator passed `--file`. If the top match is the setters' master copy at ≥ 99%, it accuses nobody and writes switch evidence for the board instead |
 
 The sealed evidence records the photo's keccak hash, the model id, the API response id and the raw
 transcription, so anyone holding the photo can rerun the match and trace and get the same answer.
 A test run on a tilted, slightly blurred photo of Patna-05's page read all five questions, matched each
 at 1.00, and named Patna-05 at posterior 1.000000 out of 1,000 centres (10/10 observations; the best
 simulated centre matched 5/10). `npm test` covers match, trace and decide without an API key (clean photo, OCR typos, one question,
-unrelated text, illegible photo, and a different centre's copy).
+unrelated text, illegible photo, a different centre's copy, the master copy, and a centre's copy with the master copy in the running).
 
 ## What each step proves
 

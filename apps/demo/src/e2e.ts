@@ -38,7 +38,7 @@ import { currentRound, roundTime } from "@zerohour/keyper/src/schedule.ts";
 import { formatEther, parseAbi, parseEventLogs, toHex, type Hex } from "viem";
 import { generateSealKeys } from "@qorechain/qoreseal";
 import { ACTORS, PUBLIC, ROOT, SECRETS, loadActor, setupActor, topUp, type Actor } from "./actors.ts";
-import { FILE_THRESHOLD, matchToPaper, readPhoto, readPhotoWithClaudeCode, traceAndDecide } from "./hunter.ts";
+import { FILE_THRESHOLD, masterCopy, matchToPaper, readPhoto, readPhotoWithClaudeCode, traceAndDecide } from "./hunter.ts";
 
 const examAbi = parseAbi([
   "function createDigest(bytes32,address,address,address[],uint8,uint32,uint32,bytes32,bytes32,bytes32) view returns (bytes32)",
@@ -53,6 +53,10 @@ const examAbi = parseAbi([
   "function revealFairness(bytes32,bytes32,bytes32,bytes)",
   "function isUnlocked(bytes32) view returns (bool)",
   "function activeRound(bytes32) view returns (uint32)",
+  "function switchDigest(bytes32,bytes32) view returns (bytes32)",
+  "function switchToBackup(bytes32,bytes32,bytes)",
+  "struct Exam { address board; address leakHunter; uint8 threshold; bool usingBackup; bool revealed; uint32 roundA; uint32 roundB; bytes32 paperCommitA; bytes32 paperCommitB; bytes32 manifestRoot; address[] keypers; }",
+  "function getExam(bytes32) view returns (Exam)",
   "function centres(bytes32,address) view returns (bool registered, bytes32 ctHashA, bytes32 ctHashB, bytes32 permCommit, uint64 openedAt, uint32 leakReports)",
 ]);
 const registryAbi = parseAbi([
@@ -275,7 +279,7 @@ const commands: Record<string, (a: string[]) => Promise<void>> = {
     });
     const head = await pub.getBlock();
     const roundA = currentRound(recs[0], Number(head.timestamp)) + Math.max(2, Math.ceil((minutes * 60) / recs[0].roundSeconds));
-    const roundB = roundA + 2;
+    const roundB = roundA + Math.max(1, numOpt(args, "--gap", 2));
     say(`exam rounds: A=${roundA} (${new Date(roundTime(recs[0], roundA) * 1000).toISOString()}), B=${roundB} (${new Date(roundTime(recs[0], roundB) * 1000).toISOString()})`);
 
     const roundKeys: Record<number, { keyper: string; publicKey: Uint8Array }[]> = { [roundA]: [], [roundB]: [] };
@@ -411,11 +415,17 @@ const commands: Record<string, (a: string[]) => Promise<void>> = {
   async photo(args) {
     const st = loadState();
     const name = args[0];
-    const c = st.centres.find((x) => x.name === name) ?? (() => { throw new Error(`centres: ${st.centres.map((x) => x.name).join(", ")}`); })();
     const set = (await read<number>("activeRound", [st.examId])) === st.roundB ? "b" : "a";
-    const v = makeVariant(paper(set), c.name, hexToBytes(set === "a" ? c.permSeedA : c.permSeedB));
     const from = numOpt(args, "--from", 3), to = numOpt(args, "--to", 7);
     mkdirSync(resolve(SECRETS, "leaks"), { recursive: true });
+    // --master: the setters' master copy (canonical order), as it exists before sealing
+    if (name === "--master") {
+      const out = resolve(SECRETS, "leaks", `master-${set}-q${from}-${to}.html`);
+      writeFileSync(out, pageHtml(paper(set), from, to));
+      return say(`wrote ${out}  (paper ${set.toUpperCase()}, master copy)\nopen it, screenshot or photograph the page, then: npm run demo -- hunt <image>`);
+    }
+    const c = st.centres.find((x) => x.name === name) ?? (() => { throw new Error(`usage: photo <centre>|--master; centres: ${st.centres.map((x) => x.name).join(", ")}`); })();
+    const v = makeVariant(paper(set), c.name, hexToBytes(set === "a" ? c.permSeedA : c.permSeedB));
     const out = resolve(SECRETS, "leaks", `${c.name}-q${from}-${to}.html`);
     writeFileSync(out, pageHtml(v.paper, from, to));
     say(`wrote ${out}\nopen it, screenshot or photograph the page, then: npm run demo -- hunt <image>`);
@@ -441,13 +451,33 @@ const commands: Record<string, (a: string[]) => Promise<void>> = {
     const { matched, observations } = matchToPaper(t, canonical);
     for (const m of matched) say(`   Q${m.printedNumber}: ${m.dropped ? `dropped (${m.dropped})` : `${m.questionId}, text match ${m.textScore.toFixed(2)}${m.firstOption ? `, first option "${m.firstOption}"` : ""}`}`);
 
-    say(`3. tracing against ${st.centres.length} real + ${decoys} simulated centre variants…`);
+    say(`3. tracing against the setters' master copy + ${st.centres.length} real + ${decoys} simulated centre variants…`);
     const real = st.centres.map((c) => makeVariant(canonical, c.name, hexToBytes(set === "a" ? c.permSeedA : c.permSeedB)));
     const simulated = Array.from({ length: decoys }, (_, i) => makeVariant(canonical, `simulated-centre-${i}`, rand32()));
-    const verdict = traceAndDecide(observations, real, simulated);
-    verdict.ranking.slice(0, 5).forEach((r) => say(`   ${r.centre.padEnd(22)} posterior ${r.posterior.toFixed(6)}  (${r.matches}/${r.observed})`));
-    say(`4. verdict: ${verdict.fileable ? "attributable" : "not attributable"}: ${verdict.reason}`);
+    const verdict = traceAndDecide(observations, real, simulated, masterCopy(canonical));
+    verdict.ranking.slice(0, 5).forEach((r) => say(`   ${r.centre.padEnd(26)} posterior ${r.posterior.toFixed(6)}  (${r.matches}/${r.observed})`));
+    say(`4. verdict: ${verdict.source === "centre" ? "attributable to a centre" : verdict.source === "master" ? "pre-distribution leak" : "not attributable"}: ${verdict.reason}`);
 
+    if (verdict.source === "master") {
+      // Nobody to accuse; the paper itself is burned. Write the public switch evidence for the board.
+      const [unlocked, onchain] = await Promise.all([read<boolean>("isUnlocked", [st.examId]), read<{ usingBackup: boolean }>("getExam", [st.examId])]);
+      if (onchain.usingBackup) return say("   already on the backup paper; nothing to switch");
+      const evidence = {
+        kind: "zerohour-switch-evidence-v1", examId: st.examId, set: set.toUpperCase(), photoHash: reading.photoHash,
+        reader: { model: reading.model, responseId: reading.responseId, transcription: t },
+        matched, observations, ranking: verdict.ranking.slice(0, 10), verdict: verdict.reason,
+        paperAUnlockedAtHunt: unlocked,
+        population: { master: 1, real: verdict.realCentres, simulated: verdict.simulatedCentres },
+        method: "Claude transcribes; deterministic text match; noisy-channel posterior over the master copy and every centre's permutation, epsilon=0.05",
+        at: new Date().toISOString(),
+      };
+      const text = JSON.stringify(evidence, null, 2);
+      const hash = bytesToHex(k256(enc.encode(text)));
+      const file = resolve(SECRETS, "leaks", `switch-evidence-${hash.slice(0, 10)}.json`);
+      writeFileSync(file, text);
+      say(`   paper ${set.toUpperCase()} leaked before sealing${unlocked ? "" : " and before its bell"}. Evidence ${hash.slice(0, 10)} written to ${file}`);
+      return say(`   the board decides: npm run demo -- switch ${file}`);
+    }
     if (!verdict.fileable) return;
     if (!args.includes("--file")) return say(`   (dry run: add --file to seal the evidence and file reportLeak at >= ${FILE_THRESHOLD})`);
     const accused = st.centres.find((c) => c.name === verdict.top!.centre)!;
@@ -460,6 +490,32 @@ const commands: Record<string, (a: string[]) => Promise<void>> = {
       at: new Date().toISOString(),
     };
     await fileLeakReport(st, accused, evidence, verdict.top!.posterior, await loadActor("board", "board"), await loadActor("leak-hunter", "hunter"));
+  },
+
+  /**
+   * The board moves every centre to the pre-sealed backup paper B in one ML-DSA-87 signed call.
+   * The reason on chain is keccak256 of the evidence file, which is published as-is: paper A is
+   * retired by the switch and the leaked text is public already, so anyone can re-hash it.
+   */
+  async switch([file]) {
+    const st = loadState();
+    if (!file || !existsSync(file)) throw new Error("usage: npm run demo -- switch <switch-evidence.json>  (written by: hunt <photo>)");
+    const text = readFileSync(file, "utf8");
+    const ev = JSON.parse(text);
+    if (ev.kind !== "zerohour-switch-evidence-v1" || ev.examId?.toLowerCase() !== st.examId.toLowerCase()) throw new Error("evidence is not a switch evidence file for this exam");
+    const reasonHash = bytesToHex(k256(enc.encode(text)));
+    const e = await read<{ usingBackup: boolean; roundB: number; keypers: readonly Hex[] }>("getExam", [st.examId]);
+    if (e.usingBackup) throw new Error("already switched to the backup paper");
+    const rec = await keyperRecord(e.keypers[0]);
+    const now = Number((await pub.getBlock()).timestamp);
+    if (now >= roundTime(rec, e.roundB)) throw new Error("too late: backup paper B is already unlocking");
+    say(`switching ${st.label} to backup paper B (round ${st.roundB}, bell ${st.unlockB}); reason ${reasonHash.slice(0, 18)}…`);
+    const board = await loadActor("board", "board");
+    st.txs.switchToBackup = await relay(board, "switchToBackup", [st.examId, reasonHash, await sign(board, await read<Hex>("switchDigest", [st.examId, reasonHash]))]);
+    saveState(st);
+    mkdirSync(pubDir(st), { recursive: true });
+    writeFileSync(resolve(pubDir(st), `switch-${reasonHash.slice(0, 10)}.json`), text);
+    say(`every centre is now on paper B. Public evidence: deployments/demo/${st.examId.slice(0, 10)}/switch-${reasonHash.slice(0, 10)}.json`);
   },
 
   /**
