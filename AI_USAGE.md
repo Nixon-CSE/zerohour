@@ -8,9 +8,9 @@ what the human did. Every claim below points at a commit, a transaction or a tes
 |---|---|
 | Agent | Claude Code (CLI), running Claude Opus 5.5, with Claude Fable 5.2 for part of the session |
 | Agent tools | Shell, file editing, a headless browser (Playwright MCP) for visual and live-data checks, the Vercel MCP, the shadcn CLI, web research |
-| Span | 15 Nov 18:13 UTC to 16 Nov 13:41 UTC, 56 commits |
+| Span | From 15 Nov 18:13 UTC, one commit per logical change (`git log`) |
 | Code | about 5,900 lines: contracts 1,050 · hourglass 446 · keyper 698 · demo 893 · web 2,557 (excluding generated shadcn components) |
-| Tests | 24 Foundry · 10 hourglass · 8 keyper · 6 Leak Hunter, all passing |
+| Tests | 24 Foundry · 10 hourglass · 9 keyper · 8 Leak Hunter, all passing |
 | In the product | The Leak Hunter: Claude Opus 5.5 reads a phone photo of a leaked paper (see [AI inside ZeroHour](#ai-inside-zerohour-the-leak-hunter)) |
 
 ## The split, in one table
@@ -19,7 +19,7 @@ what the human did. Every claim below points at a commit, a transaction or a tes
 |---|---|---|
 | Direction | Researched the hackathon rules, prizes and chain facts; proposed and red-teamed ideas over three rounds | Chose the hackathon as top priority, chose ZeroHour over the other candidates, set the bar ("must win") |
 | Code | Wrote the contracts, the crypto library, the keyper daemon, the demo driver, the website and the Leak Hunter, with their tests | Read every diff before committing it |
-| Git | Never ran `git commit` or `git push`; proposed one commit per logical change | Made all 56 commits and every push |
+| Git | Never ran `git commit` or `git push`; proposed one commit per logical change | Made every commit and every push |
 | Chain | Deployed contracts and ran the demo exam from a throwaway testnet account | Funded that account from their own wallet, registered for the Q-Day Drill, chose the drill contracts |
 | Secrets | Kept them in a gitignored `secrets/` folder; scanned the pushed repo for leaked secrets | Entered API keys in an editor, never in chat |
 | Deploy | Rehearsed the build on a fresh clone, wrote the Vercel config, verified the live site | Imported the project into Vercel and set the domain |
@@ -52,6 +52,8 @@ The same loop ran for every part of the build:
 | End-to-end run | Board, Leak Hunter, two centres and three keypers on testnet; exam `0xe54bb5d0` sealed, opened at the bell, traced and revealed | `863d72e`, `deployments/demo/0xe54bb5d0/run.json` |
 | Website | Static site that verifies every claim in the browser; 3D hourglass hero driven by chain time; board view, centre console, release ledger | `52bbd46`–`ff7ac3a`, live at https://zerohour-exam.vercel.app |
 | Leak Hunter | Vision reader, deterministic matcher, tracer and filing rule; offline tests; a real run from a phone photo | `3a18de0`–`c99ccb6`, 6 tests |
+| Bribery and slashing | A fourth bonded keyper sells its seed before the bell; a whistleblower commit-reveals it and the contract slashes the bond; the exam still opens on time | `e02adbd`–`de4cff1`, `deployments/demo/0x2db24058/run.json` |
+| Backup switch | The Leak Hunter recognises a leak in the setters' master-copy order (no centre accused); the board retires paper A in one signed transaction and backup B opens at its own bell | `deployments/demo/0x4c518322/run.json`, 2 more Leak Hunter tests |
 
 ## Mistakes the agent caught in its own work
 
@@ -68,12 +70,13 @@ before it shipped". These were all found by the agent's own checks:
 | Live pages took about 10 seconds to show data | Timing the page in the browser | A build-time event snapshot; first data in 1.7 s |
 | shadcn's generated components imported `cn` from a non-existent path | Typechecking after install | Fixed the imports in every generated component |
 | Whole-word matching failed on OCR-style typos | A Leak Hunter test written to break it | Switched to character-trigram similarity; 6/6 tests pass |
+| A keyper whose last release was far back ran out of gas on testnet: 1,296 hash steps against a limit from a 120 gas/step guess. The daemon then resent the same transaction 17 times | Reading the keyper logs after the backup exam's bell, then comparing gas used with the gas limit on the receipts | Gas formula fitted to real receipts (about 175 gas/step, plus 30%), out-of-gas retries get 1.5x gas, 3 reverts on one round stop the daemon, plus a regression test built from the receipts. The same release then succeeded using 306,997 gas, 1,477 over the old limit |
 | The project page's tagline claimed the exam board cannot read the paper. It can, because it writes the paper | Comparing the tagline with the site's own threat model | The agent asked the human to correct it rather than overclaim |
 
 ## Guardrails that held
 
-- **The agent never committed or pushed.** That was the human's rule from the start; every one of the
-  56 commits was made by the human after reading the change.
+- **The agent never committed or pushed.** That was the human's rule from the start; every
+  commit was made by the human after reading the change.
 - **The agent did not get around a safety check.** When the permission system blocked it from copying a
   centre's recovery phrase out of `secrets/` for a test, it left the phrase alone, tested with a
   throwaway phrase, and asked the human to run the real one.
@@ -119,14 +122,26 @@ The human photographed Pune-17's page on a laptop screen with an iPhone: tilted,
 Both leak reports and their evidence checks are visible on the
 [board view](https://zerohour-exam.vercel.app/exam/?id=0xe54bb5d08c756ff06bdeb69145566653781d71644beecc8c0c47e3abd6b2b1ed).
 
+### The second real run: a leak before the bell
+
+On 20 Nov a page of paper A in the setters' own question order leaked 14 minutes before its bell.
+Claude read Q8–12 exactly; the code matched them to the master copy at posterior 1.000000 (10/10),
+while the closest of 1,000 centre copies matched 4/10. No centre ever holds that order, so the Leak
+Hunter accused nobody and wrote switch evidence instead. The board, not the model, made the call:
+`switchToBackup` [`0x2c4e1503…8d40`](https://explore.qore.network/tx/0x2c4e1503476777c6d55d11d431e7dc851380a7b72449f5818e519eaca2318d40),
+whose on-chain reason is the keccak256 of the published evidence file. Backup paper B opened at its
+own bell and both centres decrypted it. The
+[exam page](https://zerohour-exam.vercel.app/exam/?id=0x4c518322756d385729bea2e801f332b1b2aba2a7e100d7bc65f71585faae889a)
+re-hashes the evidence in your browser.
+
 ## Check it yourself
 
 ```bash
-git log --format='%h %ad %an %s' --date=iso             # 56 commits, all by the human
+git log --format='%h %ad %an %s' --date=iso             # every commit, all by the human
 cd contracts && forge test                               # 24 tests
 cd packages/hourglass && npm test                        # 10 tests
-cd apps/keyper && npm test                               # 8 tests
-cd apps/demo && npm test                                 # 6 Leak Hunter tests, no API key needed
+cd apps/keyper && npm test                               # 9 tests
+cd apps/demo && npm test                                 # 8 Leak Hunter tests, no API key needed
 cd apps/demo && npm run demo -- hunt <photo> --reader claude-code   # the Leak Hunter on your own photo
 ```
 
