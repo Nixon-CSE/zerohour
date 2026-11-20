@@ -8,6 +8,8 @@ import { createPublicClient, http } from "viem";
 
 const RPC = "https://evm-testnet.qore.host";
 const SOURCES = [
+  { address: "0xAF59A5e81c0F5D85ec79f3fE6F33Bd8A923fD834", from: 10_434_412n }, // v2 registry
+  { address: "0x358545bc6d0321705f8944e32560681e788949ad", from: 10_434_414n }, // v2 exam
   { address: "0x5CF8c43C52483bF09F9a32D07a614250bd60f1AA", from: 10_136_128n },
   { address: "0x3494389A2C3BC5ea6cc0749F23C6a864aEE9c250", from: 10_140_062n },
 ];

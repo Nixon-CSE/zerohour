@@ -16,7 +16,7 @@ const exams = existsSync(demo)
       .filter((d) => existsSync(resolve(demo, d, "manifest.json")))
       .map((d) => {
         const m = JSON.parse(readFileSync(resolve(demo, d, "manifest.json"), "utf8"));
-        return { dir: `demo/${d}`, examId: m.examId, exam: m.exam };
+        return { dir: `demo/${d}`, examId: m.examId, exam: m.exam, contract: m.contract };
       })
   : [];
 writeFileSync(resolve(out, "exams.json"), JSON.stringify(exams, null, 2));

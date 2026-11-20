@@ -12,11 +12,19 @@ export const qorechain = defineChain({
   rpcUrls: { default: { http: ["https://evm-testnet.qore.host"] } },
 });
 
-export const ADDR = {
-  hourglass: "0x5CF8c43C52483bF09F9a32D07a614250bd60f1AA" as Hex,
-  exam: "0x3494389A2C3BC5ea6cc0749F23C6a864aEE9c250" as Hex,
-};
-export const FROM_BLOCK = { hourglass: 10_136_128n, exam: 10_140_062n };
+/**
+ * Contract generations. v2 (20 Nov 2026) fixes the audit findings; v1 keeps the first three
+ * real runs (the demo exam, the bribery slash, the backup switch) readable forever.
+ */
+export interface Deployment { v: 1 | 2; hourglass: Hex; exam: Hex; fromHourglass: bigint; fromExam: bigint }
+export const DEPLOYMENTS: Deployment[] = [
+  { v: 2, hourglass: "0xAF59A5e81c0F5D85ec79f3fE6F33Bd8A923fD834", exam: "0x358545bc6d0321705f8944e32560681e788949ad", fromHourglass: 10_434_412n, fromExam: 10_434_414n },
+  { v: 1, hourglass: "0x5CF8c43C52483bF09F9a32D07a614250bd60f1AA", exam: "0x3494389A2C3BC5ea6cc0749F23C6a864aEE9c250", fromHourglass: 10_136_128n, fromExam: 10_140_062n },
+];
+export const CURRENT = DEPLOYMENTS[0];
+/** The current contracts (links in the footer, the live clock). */
+export const ADDR = { hourglass: CURRENT.hourglass, exam: CURRENT.exam };
+export const deploymentOf = (exam: string) => DEPLOYMENTS.find((d) => d.exam.toLowerCase() === exam.toLowerCase());
 // explore.qore.network serves /tx/<hash> and /address/<addr>; switch its network selector to Testnet.
 export const EXPLORER = "https://explore.qore.network";
 
@@ -29,6 +37,7 @@ export const examAbi = parseAbi([
   "function centres(bytes32,address) view returns (bool registered, bytes32 ctHashA, bytes32 ctHashB, bytes32 permCommit, uint64 openedAt, uint32 leakReports)",
   "function isUnlocked(bytes32) view returns (bool)",
   "function activeRound(bytes32) view returns (uint32)",
+  "function receiptOf(bytes32,address,bool) view returns (bytes32)", // v2 only
 ]);
 
 export const registryAbi = parseAbi([
@@ -40,7 +49,8 @@ export const EV = {
   examCreated: parseAbiItem("event ExamCreated(bytes32 indexed examId, address indexed board, uint32 roundA, uint32 roundB, uint8 threshold, address[] keypers)"),
   centreAdded: parseAbiItem("event CentreAdded(bytes32 indexed examId, address indexed centre, bytes32 ctHashA, bytes32 ctHashB, bytes32 permCommit)"),
   switched: parseAbiItem("event SwitchedToBackup(bytes32 indexed examId, bytes32 reasonHash)"),
-  opened: parseAbiItem("event PaperOpened(bytes32 indexed examId, address indexed centre, bool backup, uint64 at)"),
+  opened: parseAbiItem("event PaperOpened(bytes32 indexed examId, address indexed centre, bool backup, uint64 at)"), // v1
+  openedV2: parseAbiItem("event PaperOpened(bytes32 indexed examId, address indexed centre, bool backup, uint64 at, bytes32 paperHash)"),
   leak: parseAbiItem("event LeakReported(bytes32 indexed examId, address indexed centre, bytes32 evidenceHash, uint16 confidenceBps, bytes32 sealedEvidenceRef)"),
   revealed: parseAbiItem("event FairnessRevealed(bytes32 indexed examId, bytes32 canonicalPaperHash, bytes32 salt)"),
   registered: parseAbiItem("event KeyperRegistered(address indexed keyper, bytes32 anchor, bytes32 pkRoot, uint64 genesis, uint32 roundSeconds, uint32 maxRound, uint256 bond)"),
@@ -94,6 +104,8 @@ export async function scanLogs(address: Hex, from: bigint, events: readonly (typ
 
 export interface KeyperRecord {
   address: Hex;
+  registry: Hex; // which HourglassRegistry this record (and its seed chain) lives in
+  v: 1 | 2;
   anchor: Hex;
   pkRoot: Hex;
   genesis: number;
@@ -107,10 +119,12 @@ export interface KeyperRecord {
   registered: boolean;
 }
 
-export async function keyperRecord(address: Hex): Promise<KeyperRecord> {
-  const r = await client.readContract({ address: ADDR.hourglass, abi: registryAbi, functionName: "keypers", args: [address] });
+export async function keyperRecord(address: Hex, registry: Hex = CURRENT.hourglass): Promise<KeyperRecord> {
+  const r = await client.readContract({ address: registry, abi: registryAbi, functionName: "keypers", args: [address] });
   return {
     address,
+    registry,
+    v: DEPLOYMENTS.find((d) => d.hourglass.toLowerCase() === registry.toLowerCase())?.v ?? 2,
     anchor: r[0],
     pkRoot: r[1],
     genesis: Number(r[2]),

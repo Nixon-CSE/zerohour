@@ -13,7 +13,7 @@ function Bell({ exam, releases }: { exam: ExamSummary; releases: Release[] }) {
   const before = !exam.unlocked && now < exam.unlockAt;
   const name = examTitle(exam.name, exam.id);
   const items = exam.keypers.map((k, i) => {
-    const r = revealOf(releases, k.address, exam.round);
+    const r = revealOf(releases, k.address, exam.round, k.registry);
     const on = exam.round < k.nextRound;
     return { label: `K${i + 1}`, on, bad: k.slashed, note: k.slashed ? "slashed" : on && r ? `+${r.time - exam.unlockAt} s` : on ? "released" : "sealed" };
   });
@@ -32,7 +32,7 @@ function Bell({ exam, releases }: { exam: ExamSummary; releases: Release[] }) {
       <Bubbles items={items} />
       <p className="rule-line">
         {before
-          ? `Opens when ${exam.threshold} of ${exam.keypers.length} keypers post their round ${exam.round} seed. Until then nobody can open it, the exam board included.`
+          ? `Opens when ${exam.threshold} of ${exam.keypers.length} keypers post their round ${exam.round} seed. Until then no centre, keyper or courier can read it. The exam board wrote the paper, so it is the one party this lock does not hide it from.`
           : exam.unlocked
             ? `Opened at the bell: ${done} of ${exam.keypers.length} keypers posted their seed, ${exam.threshold} were needed. ${exam.centres} centres hold sealed copies.`
             : `The bell has rung and ${done} of ${exam.threshold} needed seeds are public. The keyper daemons post within seconds of the next block.`}
@@ -89,14 +89,14 @@ export default function Live() {
             <thead><tr><th>Keyper</th><th>Bond</th><th>Public up to</th><th>Last release</th><th>Status</th></tr></thead>
             <tbody>
               {(reg.data?.keypers ?? []).map((k) => {
-                const last = reg.data!.releases.find((r) => eq(r.keyper, k.address));
+                const last = reg.data!.releases.find((r) => eq(r.keyper, k.address) && eq(r.registry, k.registry));
                 return (
-                  <tr key={k.address}>
+                  <tr key={k.registry + k.address}>
                     <td><Hash v={k.address} kind="addr" /></td>
                     <td>{formatEther(k.bond)} QOR</td>
                     <td>{k.nextRound ? `round ${k.nextRound - 1}` : "nothing yet"}<br /><span className="muted small">of {k.maxRound}, {k.roundSeconds} s rounds</span></td>
                     <td>{last ? `${ago(now - last.time)} ago` : "never"}</td>
-                    <td>{k.slashed ? <Badge variant="destructive">Slashed</Badge> : k.exitAt ? <Badge variant="secondary">Exiting</Badge> : <Badge className="bg-[var(--pen-tint)] text-[var(--pen)]">Bonded</Badge>}</td>
+                    <td>{k.slashed ? <Badge variant="destructive">Slashed</Badge> : !k.registered ? <Badge variant="secondary">Withdrawn</Badge> : k.exitAt ? <Badge variant="secondary">Exiting</Badge> : <Badge className="bg-[var(--pen-tint)] text-[var(--pen)]">Bonded</Badge>} <span className="muted small">v{k.v}</span></td>
                   </tr>
                 );
               })}

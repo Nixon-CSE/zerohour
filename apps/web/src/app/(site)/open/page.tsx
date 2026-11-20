@@ -3,12 +3,12 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { deriveSealKeys } from "@qorechain/qoreseal";
-import { bytesToHex, openPaper, type Paper } from "@zerohour/hourglass";
+import { bytesToHex, hexToBytes, k256, makeVariant, openPaper, type Paper } from "@zerohour/hourglass";
 import type { Hex } from "viem";
 import { Bubbles, Hash, Verdict, span, useAsync, useChainNow, utc } from "@/components/zh";
 import { centreLabel, examTitle } from "@/lib/names";
 import { Button } from "@/components/ui/button";
-import { chainSeed, eq, loadExam, sealedFor, type ExamView } from "@/lib/exam";
+import { chainSeed, eq, loadExam, publicFile, sealedFor, type ExamView, type Reveal } from "@/lib/exam";
 
 const LETTERS = "ABCDEFGH";
 
@@ -50,7 +50,11 @@ function Console({ v, centre }: { v: ExamView; centre: Hex }) {
     return out;
   }, [v.id, round, done ? 0 : Math.floor(now / 10)]);
   const [phrase, setPhrase] = useState("");
-  const [result, setResult] = useState<{ paper?: Paper; ms?: number; error?: string }>({});
+  const [result, setResult] = useState<{ paper?: Paper; ms?: number; error?: string; hash?: Hex }>({});
+  // The judges' centre publishes its phrase on purpose so anyone can try a real opening.
+  const judge = useAsync(async () => (c?.name === "centre-judges" && v.dir ? publicFile<{ mnemonic: string }>("demo", "judge-centre.json") : null), [c?.name]);
+  // After the fairness reveal, rebuild this centre's copy from the public reveal to compare.
+  const reveal = useAsync(async () => (v.onchain.revealed && v.dir ? publicFile<Reveal>(v.dir, "reveal.json") : null), [v.id]);
   const [busy, setBusy] = useState(false);
 
   if (!c) return <p className="err">That address is not a centre of this exam.</p>;
@@ -68,7 +72,7 @@ function Console({ v, centre }: { v: ExamView; centre: Hex }) {
       const t0 = performance.now();
       const plain = await openPaper(file.data.sealed, seeds.data ?? {}, keys);
       const ms = Math.round(performance.now() - t0);
-      setResult({ paper: JSON.parse(new TextDecoder().decode(plain)), ms });
+      setResult({ paper: JSON.parse(new TextDecoder().decode(plain)), ms, hash: bytesToHex(k256(plain)) });
     } catch (e: any) {
       const m = String(e?.message ?? e);
       setResult({ error: m.startsWith("locked") ? `Still locked: ${m.slice(8)}.` : /mnemonic|word|checksum/i.test(m) ? "That is not a valid recovery phrase. Check the spelling of each word." : `This key cannot open ${label}'s copy. It is sealed to a different centre key.` });
@@ -104,6 +108,7 @@ function Console({ v, centre }: { v: ExamView; centre: Hex }) {
           <h3>Lock 2: this centre&apos;s key</h3>
           <p className="small muted">Sealed with QoreSeal (ML-KEM-1024 + X25519) to the key {label} registered on QoreChain. No other centre, and no keyper, can open it.</p>
           <label htmlFor="phrase">Centre recovery phrase</label>
+          {judge.data?.mnemonic && <p className="small" style={{ margin: "4px 0 8px" }}>This is the judges&apos; centre: its phrase is public on purpose. <button type="button" className="underline font-semibold" onClick={() => setPhrase(judge.data!.mnemonic)}>Use the judges&apos; phrase</button></p>}
           <textarea id="phrase" value={phrase} onChange={(e) => setPhrase(e.target.value)} spellCheck={false} autoComplete="off" placeholder="12 or 24 words, separated by spaces" />
           <p className="small muted" style={{ marginTop: 8 }}>The phrase stays in this page: nothing is sent anywhere. A real centre would keep this key on a hardware device.</p>
           <Button size="xl" onClick={open} disabled={busy || !phrase.trim() || !file.data?.matches || !timeOpen}>
@@ -113,8 +118,25 @@ function Console({ v, centre }: { v: ExamView; centre: Hex }) {
         </div>
       </div>
 
+      {result.paper && result.hash && <CopyCheck v={v} centreName={c.name} centre={centre} hash={result.hash} reveal={reveal.data ?? null} />}
       {result.paper && <QuestionPaper p={result.paper} centre={label} ms={result.ms!} />}
     </>
+  );
+}
+
+/** Is the copy this browser just decrypted the one the centre signed for, and the one the reveal rebuilds? */
+function CopyCheck({ v, centreName, centre, hash, reveal }: { v: ExamView; centreName: string; centre: Hex; hash: Hex; reveal: Reveal | null }) {
+  const receipt = v.centres.find((x) => eq(x.address, centre))?.receipt ?? null;
+  const rc = reveal?.centres.find((x) => eq(x.evm, centre));
+  const rebuilt = reveal && rc ? bytesToHex(k256(new TextEncoder().encode(JSON.stringify(makeVariant(reveal.canonicalPaper, centreName, hexToBytes(reveal.set === "B" ? rc.permSeedB : rc.permSeedA)).paper)))) : null;
+  return (
+    <section style={{ marginTop: 24 }}>
+      <p className="small">Hash of the copy you just opened: <Hash v={hash} n={10} /></p>
+      <ul className="small" style={{ listStyle: "none", padding: 0 }}>
+        <li>{v.dep.v < 2 ? <span className="muted">This exam ran on the v1 contract, whose receipts did not name the paper.</span> : receipt ? <Verdict ok={eq(receipt, hash)} yes="It is the copy this centre signed for on chain." no="It differs from the copy this centre signed for." /> : <span className="muted">This centre has not filed its receipt yet.</span>}</li>
+        <li>{rebuilt ? <Verdict ok={eq(rebuilt, hash)} yes="It is exactly the copy rebuilt from the board's public fairness reveal." no="It differs from the copy the fairness reveal rebuilds: the board sealed something else." /> : <span className="muted">After the exam the board reveals the paper and orders; this copy will then be checked against them.</span>}</li>
+      </ul>
+    </section>
   );
 }
 

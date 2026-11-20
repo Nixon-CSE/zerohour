@@ -12,6 +12,7 @@ export function examTitle(name: string | null | undefined, id?: string): string 
 
 /** "centre-pune-17" -> "Pune-17" */
 export function centreLabel(name: string): string {
+  if (name === "centre-judges") return "Judges' centre";
   const m = /^centre-([a-z]+)-(\d+)$/.exec(name);
   return m ? `${m[1][0].toUpperCase()}${m[1].slice(1)}-${m[2]}` : name.startsWith("0x") ? `${name.slice(0, 8)}…` : name;
 }

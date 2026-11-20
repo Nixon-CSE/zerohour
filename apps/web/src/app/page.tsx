@@ -10,14 +10,14 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { OmrField } from "@/components/OmrField";
 import { span, useAsync, useChainNow, useHead, useMounted } from "@/components/zh";
-import { allExams, registryState, revealOf } from "@/lib/overview";
+import { allExams, registryState } from "@/lib/overview";
 import { publicFile, type Reveal } from "@/lib/exam";
 import { centreLabel } from "@/lib/names";
 
 const Scene = dynamic(() => import("@/components/hero/HourglassScene"), { ssr: false, loading: () => <div className="scene-wait" aria-hidden /> });
 
 const DEMO = "0xe54bb5d08c756ff06bdeb69145566653781d71644beecc8c0c47e3abd6b2b1ed";
-const CLOCK = { genesis: 1794748800, roundSeconds: 300 }; // keyper #1's clock, from deployments/keyper1.public.json
+const CLOCK = { genesis: 1795179900, roundSeconds: 300 }; // the v2 keypers' shared clock (deployments/testnet.json)
 
 function Hero() {
   const now = useChainNow();
@@ -58,7 +58,7 @@ function Hero() {
           <dl className="chips" aria-label="Live from QoreChain">
             <div><dt>Block</dt><dd>{head ? head.block.toLocaleString() : "…"}</dd></div>
             <div><dt>Round {mounted ? round : "…"} ends in</dt><dd>{mounted ? span(k0.roundSeconds - into) : "…"}</dd></div>
-            <div><dt>Keypers bonded</dt><dd>{reg.data ? reg.data.keypers.filter((k) => !k.slashed).length : "…"}</dd></div>
+            <div><dt>Keypers bonded</dt><dd>{reg.data ? reg.data.keypers.filter((k) => k.registered && !k.slashed && !k.exitAt).length : "…"}</dd></div>
             <div><dt>Seeds posted early</dt><dd className={early ? "text-[#ff8a8a]" : ""}>{early ?? "…"}</dd></div>
           </dl>
         </div>
@@ -168,7 +168,7 @@ const STEPS = [
   ["Keypers post their seeds", "Each 32-byte seed is checked against the keyper's anchor by the contract and by anyone watching."],
   ["The time lock opens", "Once 2 of 3 seeds are public, the time half of every centre's key can be rebuilt by anyone."],
   ["Each centre opens its own copy", "With its own key, in seconds, then files an ML-DSA-87 signed receipt on chain."],
-  ["Fairness is proven in public", "After the exam the board reveals the paper and permutation seeds. Anyone can recheck every variant."],
+  ["Fairness is proven in public", "After the exam the board reveals the paper and permutation seeds. Anyone can check the paper and every centre's order were fixed before the exam, and each centre's signed receipt says which copy it opened."],
 ];
 
 function Bell() {
@@ -275,7 +275,7 @@ function Proof() {
 const FAQ = [
   ["What if a keyper goes offline at the bell?", "Any 2 of the 3 seeds open the time lock, so one missing keyper changes nothing."],
   ["What if the paper leaks before the exam anyway?", "Then it leaked from the setting room, because no centre can read its copy before the bell. The Leak Hunter can tell: a leaked page in the setters' own question order accuses no centre. The board switches every centre to a backup paper, sealed in advance to a later round, in one signed transaction. We ran exactly this on testnet, 13 minutes before the bell."],
-  ["What stops the keypers from colluding?", "Two of them would have to share seeds before the bell. Anyone who sees an early seed can report it and take half that keyper's bond, so every accomplice is a potential informant. More outside keypers and a higher threshold raise the cost further."],
+  ["What stops the keypers from colluding?", "Two keypers who pass each other seeds early can each be turned in for half a bond. Two who pass only the decrypted pieces for one paper leave no evidence the contract can check, so the bond does not stop them. What stops them is the second lock: those pieces still open nothing without a centre's own key. Reading a paper early takes 2 keypers and a corrupt centre, and a paper leaked through a centre carries that centre's question order, so the Leak Hunter names it. Keypers from independent institutions raise the bar further."],
   ["Can the exam board read the paper early?", "The board writes the paper, so ZeroHour does not hide it from the board. It removes the readable copy from everyone after the board: the press, transport, and every centre. Splitting the paper across several setters is on the roadmap."],
   ["Why post-quantum?", "The ciphertexts are public weeks in advance and question banks are reused for years. ML-KEM-1024 and ML-DSA-87 keep sealed papers, receipts and slashing evidence safe against a future quantum attacker who records everything today."],
   ["What does a centre need on exam day?", "A key registered on QoreChain and a browser. The centre console checks the ciphertext against the chain, rebuilds the time key from public seeds and decrypts locally."],

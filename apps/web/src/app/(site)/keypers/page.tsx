@@ -34,15 +34,15 @@ export default function Keypers() {
             <thead><tr><th>Keyper</th><th>Bond</th><th>Seeds public up to</th><th>Releases</th><th>Last release</th><th>Status</th></tr></thead>
             <tbody>
               {(reg.data?.keypers ?? []).map((k) => {
-                const mine = reg.data!.releases.filter((r) => eq(r.keyper, k.address));
+                const mine = reg.data!.releases.filter((r) => eq(r.keyper, k.address) && eq(r.registry, k.registry));
                 return (
-                  <tr key={k.address}>
+                  <tr key={k.registry + k.address}>
                     <td><Hash v={k.address} kind="addr" /></td>
                     <td>{formatEther(k.bond)} QOR</td>
                     <td>{k.nextRound ? `round ${k.nextRound - 1}` : "none yet"}<br /><span className="muted small">of {k.maxRound}, {k.roundSeconds} s rounds</span></td>
                     <td>{mine.length}</td>
                     <td>{mine[0] ? `${ago(now - mine[0].time)} ago` : "never"}</td>
-                    <td>{k.slashed ? <Badge variant="destructive">Slashed</Badge> : k.exitAt ? <Badge variant="secondary">Exiting</Badge> : <Badge className="bg-[var(--pen-tint)] text-[var(--pen)]">Bonded</Badge>}</td>
+                    <td>{k.slashed ? <Badge variant="destructive">Slashed</Badge> : !k.registered ? <Badge variant="secondary">Withdrawn</Badge> : k.exitAt ? <Badge variant="secondary">Exiting</Badge> : <Badge className="bg-[var(--pen-tint)] text-[var(--pen)]">Bonded</Badge>} <span className="muted small">v{k.v}</span></td>
                   </tr>
                 );
               })}

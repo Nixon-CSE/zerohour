@@ -45,8 +45,9 @@ function Centres({ v }: { v: ExamView }) {
             <dl>
               <div><dt>Published ciphertext</dt><dd><Hash v={backup ? c.ctHashB : c.ctHashA} /><br />{checks.loading ? <span className="pending">checking…</span> : chk?.sealed ? <Verdict ok={chk.matches} yes="file matches on-chain hash" no="file does not match" /> : <span className="muted">no public copy here</span>}</dd></div>
               <div><dt>Opened</dt><dd>{c.openedAt ? <>{utc(c.openedAt)}<br /><span className="muted small">{c.openedAt - v.unlockAt} s after the bell</span></> : <span className="muted">not yet</span>}</dd></div>
+              {v.dep.v >= 2 && <div><dt>Signed receipt</dt><dd>{c.receipt ? <><Hash v={c.receipt} /><br /><span className="muted small">hash of the paper it decrypted</span></> : <span className="muted">none yet</span>}</dd></div>}
             </dl>
-            <Button asChild variant="outline" size="lg"><Link href={`/open/?id=${v.id}&centre=${c.address}`}>Open as this centre <ArrowRight /></Link></Button>
+            <Button asChild variant={c.name === "centre-judges" ? "default" : "outline"} size="lg"><Link href={`/open/?id=${v.id}&centre=${c.address}`}>{c.name === "centre-judges" ? "Open it yourself" : "Open as this centre"} <ArrowRight /></Link></Button>
           </article>
         );
       })}
