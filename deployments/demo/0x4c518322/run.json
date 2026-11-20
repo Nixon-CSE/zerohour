@@ -1,0 +1,99 @@
+{
+  "exam": "ZEROHOUR-BACKUP-2026-11-20T04:24",
+  "examId": "0x4c518322756d385729bea2e801f332b1b2aba2a7e100d7bc65f71585faae889a",
+  "chain": "qorechain-diana",
+  "unlockA": "2026-11-20T04:40:00.000Z",
+  "unlockB": "2026-11-20T04:55:00.000Z",
+  "roundA": 1336,
+  "roundB": 1339,
+  "story": "A page of paper A in the setters' own question order leaked 14 minutes before its bell. The Leak Hunter (Claude Opus 5.5 reading the image, code deciding) matched it to the master copy at posterior 1.0 (10/10); the closest of 1,000 centre copies matched 4/10, so no centre was accused. The board retired paper A and moved every centre to backup paper B in one ML-DSA-87 signed transaction. B opened at its own bell and both centres decrypted it.",
+  "timeline": [
+    {
+      "step": "createExam + addCentre x2 (keypers #1, #2, #3; threshold 2; B three rounds after A)",
+      "txs": {
+        "createExam": "0xe61d9b5be69c3b0667aee90fe05ae586e52105e9e954f2e9a66941c7aa759fad",
+        "addCentre:centre-pune-17": "0x2d5bc8341dd0518c7f896969ee2fd023383f0186b06b34b2d7079788022074ad",
+        "addCentre:centre-patna-05": "0x59d64cbb0eb713159df0536af9e794404c7e513a8781c00badd0d5a4d744be96"
+      }
+    },
+    {
+      "step": "leak: a page of paper A's master copy (Q8-12) surfaces before the bell; Leak Hunter verdict 'pre-distribution leak'",
+      "reader": "claude-code:claude-opus-5-5",
+      "verdict": "master-copy (setting room) posterior 1.000000 (10/10); best centre copy 4/10",
+      "evidence": "switch-0x9dc3daac.json (keccak256 = reasonHash on chain)"
+    },
+    {
+      "step": "board switches every centre to backup paper B, 13 min before A's bell",
+      "txs": {
+        "switchToBackup": "0x2c4e1503476777c6d55d11d431e7dc851380a7b72449f5818e519eaca2318d40"
+      },
+      "at": "2026-11-20T04:26:47Z"
+    },
+    {
+      "step": "A's bell (round 1336): keypers release as scheduled; paper A is already retired",
+      "releases": [
+        {
+          "keyper": "keyper #2 (0x17aB…5BbA)",
+          "tx": "0x0b0ea6e0cbe0a1a84923b886c8c2a3e4e7faaba15c1cd990ab4cc6590b15111a",
+          "block": "10413267",
+          "at": "2026-11-20T04:40:12.781Z"
+        },
+        {
+          "keyper": "keyper #1 (0x104C…2bc1)",
+          "tx": "0xa44f4ab4c486d35f644ce52ed2356e65cc753fe04ceda1b7085cfcecc792c97a",
+          "block": "10413271",
+          "at": "2026-11-20T04:40:19.529Z"
+        }
+      ]
+    },
+    {
+      "step": "B's bell (round 1339): keypers #2 and #1 release; the time lock on B opens",
+      "releases": [
+        {
+          "keyper": "keyper #2 (0x17aB…5BbA)",
+          "tx": "0x40021f65d43361bb3165d8a4e97aec5c734c21849138d70a974b3a0dba6f8b12",
+          "block": "10413898",
+          "at": "2026-11-20T04:55:10.003Z"
+        },
+        {
+          "keyper": "keyper #1 (0x104C…2bc1)",
+          "tx": "0x6980f928e4580dc3154febfeb064fef925884f84194be693f273370c0a593847",
+          "block": "10413899",
+          "at": "2026-11-20T04:55:11.163Z"
+        }
+      ]
+    },
+    {
+      "step": "bug found: keyper #3 had last released round 40, so its round-1336 release walked 1,296 hash steps and ran out of gas (limit 305,520 from a 120 gas/step formula). The daemon resent it unchanged 17 times. Fixed: gas formula fitted to receipts, out-of-gas retries get 1.5x gas, 3 reverts on one round stop the daemon. Restarted with the fix, the same release used 306,997 gas.",
+      "failedExample": "0x74d724552f679a551a189ed2194eb981c1f675659b61cd18ff1297fc81bc3ae3",
+      "releases": [
+        {
+          "keyper": "keyper #3 (0x2E54…ab06)",
+          "round": 1336,
+          "tx": "0xd89c7ab8f9bd6fce0febd83470ec0bd32a3c2033c1a66e639aede4e5e0cee506",
+          "block": "10413996",
+          "gasUsed": "306997"
+        },
+        {
+          "keyper": "keyper #3 (0x2E54…ab06)",
+          "round": 1339,
+          "tx": "0x10670fb954f16fe66ed91644b85ceb46cc6284fc288efa02387b86920b66eb05",
+          "block": "10414000"
+        }
+      ]
+    },
+    {
+      "step": "centres decrypt paper B (35 ms, 33 ms) + ML-DSA-signed receipts",
+      "txs": {
+        "recordOpening:centre-pune-17": "0xac20a03eea2366a47f4b2463efa141944dea3c12625ff5906bc9010e107108f3",
+        "recordOpening:centre-patna-05": "0xb4e1437fab1ec9f642c8e3561adfbc128ce62bd26d6a4e7c0f0fbc75d0f20f85"
+      }
+    },
+    {
+      "step": "fairness reveal of paper B",
+      "txs": {
+        "revealFairness": "0x7a2aac8d4a1e36d647a970633da14bec6df55801edb0c911d8074f2795f227a2"
+      }
+    }
+  ]
+}

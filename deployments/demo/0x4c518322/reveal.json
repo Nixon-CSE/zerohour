@@ -1,0 +1,247 @@
+{
+  "canonicalPaper": {
+    "title": "ZeroHour Mock — Biology (Set B, backup)",
+    "questions": [
+      {
+        "id": "B01",
+        "text": "Which cell organelle synthesises proteins?",
+        "options": [
+          "Ribosome",
+          "Vacuole",
+          "Centriole",
+          "Peroxisome"
+        ],
+        "answer": 0
+      },
+      {
+        "id": "B02",
+        "text": "Loop of Henle is part of the:",
+        "options": [
+          "Liver lobule",
+          "Nephron",
+          "Neuron",
+          "Alveolus"
+        ],
+        "answer": 1
+      },
+      {
+        "id": "B03",
+        "text": "Okazaki fragments are formed on the:",
+        "options": [
+          "Leading strand",
+          "Lagging strand",
+          "mRNA",
+          "tRNA"
+        ],
+        "answer": 1
+      },
+      {
+        "id": "B04",
+        "text": "Kranz anatomy is characteristic of:",
+        "options": [
+          "C4 plants",
+          "C3 plants",
+          "Algae",
+          "Fungi"
+        ],
+        "answer": 0
+      },
+      {
+        "id": "B05",
+        "text": "Which gland secretes thyroxine?",
+        "options": [
+          "Adrenal",
+          "Thyroid",
+          "Pineal",
+          "Thymus"
+        ],
+        "answer": 1
+      },
+      {
+        "id": "B06",
+        "text": "Synapsis of homologous chromosomes occurs in:",
+        "options": [
+          "Zygotene",
+          "Pachytene",
+          "Diplotene",
+          "Anaphase II"
+        ],
+        "answer": 0
+      },
+      {
+        "id": "B07",
+        "text": "Which valve guards the opening between left atrium and ventricle?",
+        "options": [
+          "Tricuspid",
+          "Bicuspid (mitral)",
+          "Pulmonary",
+          "Aortic"
+        ],
+        "answer": 1
+      },
+      {
+        "id": "B08",
+        "text": "DNA fragments are joined by:",
+        "options": [
+          "Helicase",
+          "DNA ligase",
+          "Gyrase",
+          "RNase"
+        ],
+        "answer": 1
+      },
+      {
+        "id": "B09",
+        "text": "Leghaemoglobin is found in:",
+        "options": [
+          "Root nodules",
+          "Leaves",
+          "Red blood cells",
+          "Muscle"
+        ],
+        "answer": 0
+      },
+      {
+        "id": "B10",
+        "text": "ADH (vasopressin) is released from the:",
+        "options": [
+          "Anterior pituitary",
+          "Posterior pituitary",
+          "Adrenal cortex",
+          "Thyroid"
+        ],
+        "answer": 1
+      },
+      {
+        "id": "B11",
+        "text": "Which chamber of the heart pumps blood into the aorta?",
+        "options": [
+          "Right atrium",
+          "Left ventricle",
+          "Right ventricle",
+          "Left atrium"
+        ],
+        "answer": 1
+      },
+      {
+        "id": "B12",
+        "text": "Number of autosomes in a human somatic cell is:",
+        "options": [
+          "46",
+          "44",
+          "23",
+          "22"
+        ],
+        "answer": 1
+      },
+      {
+        "id": "B13",
+        "text": "Sieve tubes are found in:",
+        "options": [
+          "Xylem",
+          "Phloem",
+          "Pith",
+          "Epidermis"
+        ],
+        "answer": 1
+      },
+      {
+        "id": "B14",
+        "text": "Trypsin is secreted by the:",
+        "options": [
+          "Stomach",
+          "Pancreas",
+          "Liver",
+          "Salivary gland"
+        ],
+        "answer": 1
+      },
+      {
+        "id": "B15",
+        "text": "The Calvin cycle takes place in the:",
+        "options": [
+          "Thylakoid lumen",
+          "Stroma",
+          "Mitochondrial matrix",
+          "Nucleus"
+        ],
+        "answer": 1
+      },
+      {
+        "id": "B16",
+        "text": "Phenotypic ratio of a monohybrid F2 cross is:",
+        "options": [
+          "1:2:1",
+          "3:1",
+          "9:3:3:1",
+          "1:1"
+        ],
+        "answer": 1
+      },
+      {
+        "id": "B17",
+        "text": "Night blindness results from deficiency of:",
+        "options": [
+          "Vitamin A",
+          "Vitamin B12",
+          "Vitamin C",
+          "Vitamin E"
+        ],
+        "answer": 0
+      },
+      {
+        "id": "B18",
+        "text": "Which cells are attacked by HIV?",
+        "options": [
+          "B cells",
+          "Helper T cells",
+          "Erythrocytes",
+          "Platelets"
+        ],
+        "answer": 1
+      },
+      {
+        "id": "B19",
+        "text": "The vector most used in plant genetic engineering is:",
+        "options": [
+          "Agrobacterium Ti plasmid",
+          "Bacteriophage T4",
+          "Yeast YAC",
+          "Retrovirus"
+        ],
+        "answer": 0
+      },
+      {
+        "id": "B20",
+        "text": "Haemoglobin is located in:",
+        "options": [
+          "Plasma",
+          "Erythrocytes",
+          "Leucocytes",
+          "Lymph"
+        ],
+        "answer": 1
+      }
+    ]
+  },
+  "canonicalPaperHash": "0xc97ba15bf6ef30092b6111bbe09ae33136396f56b208e84e320c2204ebee70bc",
+  "salt": "0x7a032c7bda5c778938ab45b5a9e2a50c0f9e51b66767b49020fd7d9752d3bd71",
+  "set": "B",
+  "centres": [
+    {
+      "name": "centre-pune-17",
+      "evm": "0x13e39273957F818746Fd38384374F3ff850E2E8f",
+      "permSeedA": "0x4730f7b1672bae8c69ebb2612cb7c52e17b1724f30b7c4f09d740317ce501d03",
+      "permSeedB": "0x5460ee236345393b3ea7ded716a389f4a5b2b1ce04b7c9136b0f4c9069d54633",
+      "permSalt": "0x5f72fab3fc2cda9008cf3bb9528c87973242a5b0cbc620f0d4bf1cac2d94dac5"
+    },
+    {
+      "name": "centre-patna-05",
+      "evm": "0xB82Be3565EA2C31475D791778F8C1eEF6338dce9",
+      "permSeedA": "0x4dbd608a5889bd680fdedc3b0bf01bbb07fd6e162024f705abbdfa2bea7de209",
+      "permSeedB": "0xefcb0191de5205607d1f1f43d5703dab02c639768c137f29212c80662773d020",
+      "permSalt": "0x95e3f1dbfcc00e5659d670c7c13f0688010b12cbe0ffc535f5cc5f5e8d054266"
+    }
+  ],
+  "check": "keccak(canonicalPaperHash ‖ salt) == paperCommit on chain; keccak(permSeedA ‖ permSeedB ‖ permSalt) == permCommit; makeVariant(canonical, centre, permSeed) reproduces each sealed paper"
+}
