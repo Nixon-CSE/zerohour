@@ -10,7 +10,7 @@ what the human did. Every claim below points at a commit, a transaction or a tes
 | Agent tools | Shell, file editing, a headless browser (Playwright MCP) for visual and live-data checks, the Vercel MCP, the shadcn CLI, web research |
 | Span | From 15 Nov 18:13 UTC, one commit per logical change (`git log`) |
 | Code | about 5,900 lines: contracts 1,050 · hourglass 446 · keyper 698 · demo 893 · web 2,557 (excluding generated shadcn components) |
-| Tests | 24 Foundry · 10 hourglass · 9 keyper · 8 Leak Hunter, all passing |
+| Tests | 31 Foundry (incl. 7 audit regressions) · 10 hourglass · 9 keyper · 8 Leak Hunter, all passing |
 | In the product | The Leak Hunter: Claude Opus 5.5 reads a phone photo of a leaked paper (see [AI inside ZeroHour](#ai-inside-zerohour-the-leak-hunter)) |
 
 ## The split, in one table
@@ -72,6 +72,27 @@ before it shipped". These were all found by the agent's own checks:
 | Whole-word matching failed on OCR-style typos | A Leak Hunter test written to break it | Switched to character-trigram similarity; 6/6 tests pass |
 | A keyper whose last release was far back ran out of gas on testnet: 1,296 hash steps against a limit from a 120 gas/step guess. The daemon then resent the same transaction 17 times | Reading the keyper logs after the backup exam's bell, then comparing gas used with the gas limit on the receipts | Gas formula fitted to real receipts (about 175 gas/step, plus 30%), out-of-gas retries get 1.5x gas, 3 reverts on one round stop the daemon, plus a regression test built from the receipts. The same release then succeeded using 306,997 gas, 1,477 over the old limit |
 | The project page's tagline claimed the exam board cannot read the paper. It can, because it writes the paper | Comparing the tagline with the site's own threat model | The agent asked the human to correct it rather than overclaim |
+
+## The self-audit (20 Nov)
+
+Before the last stretch the human asked the agent to audit everything it had built. It read the
+contracts, the crypto library, the daemon, the website and the full git history, then **wrote a
+failing-by-design test for every suspected flaw before claiming it**:
+
+| Finding | Severity | Proof | Fix |
+|---|---|---|---|
+| A keyper that exited and re-registered kept a stale `exitAt`, and old public withdraw signatures could be replayed to pull its new bond at once | Contract bug (never triggered: no keyper had re-registered) | Proof-of-concept test passed against v1 | v2 retires a keyper on withdrawal; regression tests |
+| A duplicated keyper made a "2 of 2" exam open with one seed | Contract bug | Proof-of-concept test | v2 checks keyper sets on chain |
+| Exam ids could be squatted by anyone who guessed the label | Contract bug | Proof-of-concept test | v2 derives the id from (board, label) |
+| The fairness check rebuilt each copy from the revealed seed and then checked that copy, so it could never fail | Overclaim | Reading `verifyFairness` | v2 receipts sign the decrypted paper's hash; the page compares them with the reveal |
+| Slashing catches a leaked *seed*, not a keyper handing over its decrypted piece of one paper | Overclaim in the site's threat table | Reasoning about what the contract can check | The site now says so, and why the second lock (a centre's key) is the real defence |
+| A page said "nobody can open it, the exam board included" | Overclaim | Grepping every strong claim | Rewritten |
+| Judges could not open a paper themselves | Gap | Looking for any public centre phrase | A judges' centre with a deliberately public phrase |
+
+The same pass confirmed what holds: 0 of 25 real secrets anywhere in git history (checked by
+deriving every key and searching the full history), no vulnerable production dependencies, all
+15 commits cited here exist, and the landing page's real-run timeline matches block times to the
+second. v2 was deployed on 20 Nov; v1 stays readable with the first three real runs.
 
 ## Guardrails that held
 
@@ -138,7 +159,7 @@ re-hashes the evidence in your browser.
 
 ```bash
 git log --format='%h %ad %an %s' --date=iso             # every commit, all by the human
-cd contracts && forge test                               # 24 tests
+cd contracts && forge test                               # 31 tests
 cd packages/hourglass && npm test                        # 10 tests
 cd apps/keyper && npm test                               # 9 tests
 cd apps/demo && npm test                                 # 8 Leak Hunter tests, no API key needed
