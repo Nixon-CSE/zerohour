@@ -50,6 +50,13 @@ test("round arithmetic and gas scale with walk length", () => {
   assert.ok(releaseGas(8640) > releaseGas(1));
 });
 
+test("release gas covers what testnet actually charged", () => {
+  // receipts: [steps, gasUsed]. 1,296 steps is the release that ran out of gas under the old formula.
+  for (const [steps, used] of [[2, 75_120], [1_059, 259_967], [1_296, 305_520]] as const) {
+    assert.ok(releaseGas(steps) >= BigInt(Math.ceil(used * 1.15)), `${steps} steps: ${releaseGas(steps)} < ${used} + 15%`);
+  }
+});
+
 test("window checks: scope, budget, liveness", () => {
   const w = { found: true, live: true, nativeOnly: false, remainingTxs: 3n, remainingBlocks: 100n, remainingValue: 1_000n, allowedTargets: ["0xAbC"] } as any;
   assert.equal(windowProblem(w, "0xabc", 500n), null);

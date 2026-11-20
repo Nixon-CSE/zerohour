@@ -62,5 +62,9 @@ export function plan(p: PlanInput): Plan {
   return { action: "wait", nextTarget: next, secondsUntil: Math.max(0, roundTime(clock, next) + safety - chainTime) };
 }
 
-/** Gas limit for release(): base cost + one keccak per walked step, with headroom. */
-export const releaseGas = (steps: number) => BigInt(150_000 + 120 * Math.max(1, steps));
+/**
+ * Gas limit for release(): base cost + one keccak per walked step, with 30% headroom.
+ * Fitted to testnet receipts: 2 steps used 75,120 gas, 1,059 steps used 259,967 (about 175 per step).
+ * The old 120-per-step formula ran a 1,296-step release out of gas on 20 Nov.
+ */
+export const releaseGas = (steps: number) => BigInt(Math.ceil((80_000 + 180 * Math.max(1, steps)) * 1.3));

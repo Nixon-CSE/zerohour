@@ -84,6 +84,9 @@ export async function run(acc: UnifiedAccount, secret: ChainSecret, opts: RunOpt
   let stop = false;
   process.once("SIGINT", () => ((stop = true), log("stopping")));
   let backoff = tuning.pollMs;
+  // A reverted release is never resent unchanged: out of gas -> 1.5x gas; 3 reverts on one round -> stop.
+  const MAX_REVERTS = 3;
+  let failing = { round: -1, reverts: 0, boost: 100n };
 
   while (!stop) {
     try {
@@ -134,7 +137,8 @@ export async function run(acc: UnifiedAccount, secret: ChainSecret, opts: RunOpt
         for (let i = 0; i < p.steps; i++) h = k256(h);
         if (bytesToHex(h).toLowerCase() !== rec.lastHash.toLowerCase()) throw new Error(`seed for round ${p.round} does not hash to on-chain lastHash`);
 
-        const gas = releaseGas(p.steps);
+        if (failing.round !== p.round) failing = { round: p.round, reverts: 0, boost: 100n };
+        const gas = (releaseGas(p.steps) * failing.boost) / 100n;
         const fee = await fees();
         const cost = weiToUqorCeil(gas * fee.maxFeePerGas);
         if (opts.dryRun) {
@@ -152,7 +156,18 @@ export async function run(acc: UnifiedAccount, secret: ChainSecret, opts: RunOpt
 
         const r = await sendRelease(acc.privateKey as Hex, me, p.round, seed, gas, fee);
         log("released", { round: p.round, reason: p.reason, steps: p.steps, tx: r.hash, status: r.status, block: r.block, gasUsed: r.gasUsed });
-        if (r.status !== "success") throw new Error(`release tx reverted: ${r.hash}`);
+        if (r.status !== "success") {
+          failing.reverts++;
+          const outOfGas = r.gasUsed >= gas;
+          if (outOfGas) failing.boost = (failing.boost * 3n) / 2n;
+          if (failing.reverts >= MAX_REVERTS) {
+            log("giving-up", { round: p.round, reverts: failing.reverts, lastTx: r.hash, note: "stopped instead of burning gas; check the registry and the seed chain" });
+            if (opts.once) throw new Error(`release of round ${p.round} reverted ${failing.reverts} times`);
+            return;
+          }
+          throw new Error(`release tx reverted${outOfGas ? " (out of gas; retrying with 1.5x gas)" : ""}: ${r.hash}`);
+        }
+        failing = { round: -1, reverts: 0, boost: 100n };
         backoff = tuning.pollMs;
         if (opts.once) return;
         continue; // more may be due
