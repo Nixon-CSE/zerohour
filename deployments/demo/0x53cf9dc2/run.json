@@ -1,0 +1,59 @@
+{
+  "exam": "ZEROHOUR-PUBLIC-2026-11-20T17:35",
+  "examId": "0x53cf9dc20c56b3abec5f0763981dab01f541fdb78cff5bc650c0c9d80e8670b0",
+  "chain": "qorechain-diana",
+  "contracts": "v2 (ZeroHourExam 0x3585…49ad, HourglassRegistry 0xAF59…D834)",
+  "unlockA": "2026-11-20T17:50:00.000Z",
+  "story": "First exam on the audited v2 contracts. Three centres, one of them the judges' centre whose phrase is public (deployments/demo/judge-centre.json), so anyone can open its copy in the centre console. Each centre's receipt signs keccak256 of the exact paper it decrypted; after the fairness reveal the exam page rebuilds every centre's copy and compares.",
+  "timeline": [
+    {
+      "step": "createExam (id derived on chain from board + label; keyper set checked on chain) + addCentre x3",
+      "txs": {
+        "createExam": "0xfc74539776aea4096a77769070516ef1b29bb36cb76f8e529cb9f29c66852ad6",
+        "addCentre:centre-pune-17": "0xb71e0e407d8ac01b521f794ca33690c72eb0ffb5d7de288ed29a9c97983651e0",
+        "addCentre:centre-patna-05": "0xe0e403d525c9965e023aa610f444d36fba4f7b40019a4b85384d2895dd90e505",
+        "addCentre:centre-judges": "0x469107ae5edf60867fb5d5c73b7f176dcadc33f85733a09ec4bc3cb1281176ff"
+      }
+    },
+    {
+      "step": "bell: all three keypers release round 57",
+      "releases": [
+        {
+          "keyper": "keyper #1 (0x104C…2bc1)",
+          "round": 57,
+          "tx": "0x5928a65dff0f6724c01c29959139fbba5df098c159f7181d8d0aa8a1b0376e0c",
+          "block": "10446289",
+          "at": "2026-11-20T17:50:14.302Z"
+        },
+        {
+          "keyper": "keyper #2 (0x17aB…5BbA)",
+          "round": 57,
+          "tx": "0x6ba7d7b52004115bdc07d82db56b6fac9f96f9b6c07bfb1d235d1724bfd66f2c",
+          "block": "10446290",
+          "at": "2026-11-20T17:50:15.779Z"
+        },
+        {
+          "keyper": "keyper #3 (0x2E54…ab06)",
+          "round": 57,
+          "tx": "0xbeffb02ade14f4a6fc7821d5202329c3b19645e57f06d531305651b0c9e803d6",
+          "block": "10446289",
+          "at": "2026-11-20T17:50:14.159Z"
+        }
+      ]
+    },
+    {
+      "step": "centres decrypt; v2 receipts name the paper hash",
+      "txs": {
+        "recordOpening:centre-pune-17": "0x367dafacf062fce8bc78969b9342608499e5e188f5bdd93f3ed1414a9fe3022b",
+        "recordOpening:centre-patna-05": "0x68ef13014a104e2f0e62d35236b9b7b57858d7beaa41d14ecaa8c505e9f1f23e",
+        "recordOpening:centre-judges": "0x1f8485a7d93b3a6d25af66fa271a7f547926df5f40b1b4a0bae89f2472234103"
+      }
+    },
+    {
+      "step": "fairness reveal; every receipt matches the copy rebuilt from the reveal",
+      "txs": {
+        "revealFairness": "0x51a0f490ba71c607a3a06c531f2d0c43fed3a982bad017d959e773e4e50f6553"
+      }
+    }
+  ]
+}

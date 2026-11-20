@@ -5,21 +5,39 @@
   "rest": "https://api-testnet.qore.host",
   "contracts": {
     "HourglassRegistry": {
-      "address": "0x5CF8c43C52483bF09F9a32D07a614250bd60f1AA",
+      "address": "0xAF59A5e81c0F5D85ec79f3fE6F33Bd8A923fD834",
+      "deployBlock": 10434412,
+      "deployTx": "0x879c67fa2f262e0de221a19eef71882277d0005be4e6cba04a8306f1a47861b6",
       "minBond": "1 QOR",
-      "exitDelay": "1 day"
+      "exitDelay": "1 day",
+      "version": "v2"
     },
     "ZeroHourExam": {
-      "address": "0x3494389A2C3BC5ea6cc0749F23C6a864aEE9c250",
-      "deployBlock": 10140062,
-      "deployTx": "0x7cb6ec363c34c68203c4d383e7c0ca12fe15ac023c54218b3f046555701baf9e",
-      "hourglass": "0x5CF8c43C52483bF09F9a32D07a614250bd60f1AA"
+      "address": "0x358545bc6d0321705f8944e32560681e788949ad",
+      "deployBlock": 10434414,
+      "deployTx": "0x246d691d6a8fe3bfefe7006f1336e503d4acf6b29b9e1f9f7a1f71bf72392cd6",
+      "hourglass": "0xAF59A5e81c0F5D85ec79f3fE6F33Bd8A923fD834",
+      "version": "v2"
     }
   },
   "superseded": {
     "ZeroHourExam@v0": {
       "address": "0x81B12bE5a2f4D7342BC329cdcC34Ec02eD57f581",
       "reason": "isUnlocked read seedOf(round) only; a keyper that released a later round first left the exam locked forever. v1 counts round < nextRound."
+    },
+    "HourglassRegistry@v1": {
+      "address": "0x5CF8c43C52483bF09F9a32D07a614250bd60f1AA",
+      "minBond": "1 QOR",
+      "exitDelay": "1 day",
+      "reason": "Audit 20 Nov: re-registration kept a stale exitAt and nextRound, and exit/withdraw signatures had no nonce, so an old public withdraw signature could pull a re-registered keyper's bond at once. v2 retires a keyper on withdrawal. Never triggered on v1 (no keyper re-registered). Keypers 1-3 requested exit on 20 Nov.",
+      "history": "exams 0xe54bb5d0, 0x2db24058 (keyper #4 slashed), 0x4c518322; Q-Day Drill contracts"
+    },
+    "ZeroHourExam@v1": {
+      "address": "0x3494389A2C3BC5ea6cc0749F23C6a864aEE9c250",
+      "deployBlock": 10140062,
+      "deployTx": "0x7cb6ec363c34c68203c4d383e7c0ca12fe15ac023c54218b3f046555701baf9e",
+      "hourglass": "0x5CF8c43C52483bF09F9a32D07a614250bd60f1AA",
+      "reason": "Audit 20 Nov: exam id not bound to the board (squattable), duplicate/unregistered/slashed keypers accepted (a duplicate faked the threshold), one receipt per centre across both sets, receipts did not name the decrypted paper. v2 fixes all four."
     }
   },
   "keypers": [
@@ -29,5 +47,16 @@
       "public": "deployments/keyper1.public.json",
       "note": "also the Q-Day drill account (throwaway; its ECDSA key is given to the drill attacker)"
     }
-  ]
+  ],
+  "deployer": "board account 0xe1FD768beFA0516Ef3dBf7bFc80aAC471298F9dA (no owner on either contract)",
+  "keypersV2": {
+    "genesis": "2026-11-20T13:05:00Z",
+    "roundSeconds": 300,
+    "maxRound": 17280,
+    "registrations": {
+      "keyper1 0x104C6d4f856f0e3CbC5c92474BF18AE19b882bc1": "0x4329eae320d1fa89f246878a52c0bfeccfb8e864976c3e7e34e6f40ac32a9975",
+      "keyper2 0x17aB3569aF1136D8CF22Ccc83b22ec73a4FE5BbA": "0x999525b244e1ca20151243ab75f590f929fc97b592a271579001a4043afbfcd3",
+      "keyper3 0x2E547cA9A3b7697b1fF8833c0D59D922dBCdab06": "0x427b08e3349a0656420297efbd787bd6568dabcc269c3483aed57ef5f101933e"
+    }
+  }
 }
