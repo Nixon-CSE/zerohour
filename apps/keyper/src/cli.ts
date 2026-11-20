@@ -9,6 +9,7 @@
  *     --heartbeat N     also release the current round whenever N rounds are unrevealed
  *     --dry-run         plan and verify, never broadcast
  *   release-now         one-shot: release the current round (e.g. drill-day transaction)
+ *   exit | withdraw     leave the registry: request exit, then (after the delay) withdraw the bond
  *   export-pk R [R..]   print round R's ML-KEM-1024 public key + Merkle proof against pkRoot (JSON)
  *
  * Files live in $KEYPER_HOME (default ~/.zerohour-keyper); see src/config.ts.
@@ -99,7 +100,8 @@ const commands: Record<string, (a: string[]) => Promise<void>> = {
     const digest = await pub.readContract({ address: contracts.hourglass, abi: registryAbi, functionName: "registerDigest", args });
     const sig = mldsa87.sign(acc.pqc.secretKey, hexToBytes(digest));
 
-    const gas = 1_500_000n;
+    // registration carries no secret (anchor and pkRoot are public), so estimating is safe
+    const gas = ((await pub.estimateContractGas({ address: contracts.hourglass, abi: registryAbi, functionName: "register", args: [...args, toHex(sig)], value, account: me })) * 13n) / 10n;
     const fee = await fees();
     const cost = weiToUqorCeil(gas * fee.maxFeePerGas);
     const bondUqor = weiToUqorCeil(value);
@@ -152,10 +154,40 @@ const commands: Record<string, (a: string[]) => Promise<void>> = {
     console.log(JSON.stringify({ keyper: acc.evm, registry: contracts.hourglass, pkRoot: rec.pkRoot, genesis: rec.genesis, roundSeconds: rec.roundSeconds, keys }));
   },
 
+  /** Start leaving: ML-DSA-87 signed; the bond unlocks after the registry's exit delay. */
+  async exit() {
+    const acc = await loadAccount();
+    const me = acc.evm as Hex;
+    const digest = await pub.readContract({ address: contracts.hourglass, abi: registryAbi, functionName: "exitDigest", args: [me] });
+    const sig = toHex(mldsa87.sign(acc.pqc.secretKey, hexToBytes(digest)));
+    console.log(`requestExit on ${contracts.hourglass}: ${await sendPq(acc, "requestExit", [me, sig])}`);
+  },
+
+  /** Withdraw the bond to this account (the recipient is bound inside the ML-DSA-87 signature). */
+  async withdraw() {
+    const acc = await loadAccount();
+    const me = acc.evm as Hex;
+    const digest = await pub.readContract({ address: contracts.hourglass, abi: registryAbi, functionName: "withdrawDigest", args: [me, me] });
+    const sig = toHex(mldsa87.sign(acc.pqc.secretKey, hexToBytes(digest)));
+    console.log(`withdraw from ${contracts.hourglass}: ${await sendPq(acc, "withdraw", [me, me, sig])}`);
+  },
+
   async "release-now"(args) {
     await run(await loadAccount(), loadSecret(), { once: true, heartbeatEvery: 1, dryRun: flag(args, "--dry-run") });
   },
 };
+
+/** Relay an ML-DSA-authorised registry call from this account through a registry-scoped window. */
+async function sendPq(acc: Awaited<ReturnType<typeof loadAccount>>, functionName: "requestExit" | "withdraw", args: readonly unknown[]) {
+  const me = acc.evm as Hex;
+  const gas = ((await pub.estimateContractGas({ address: contracts.hourglass, abi: registryAbi, functionName, args: args as any, account: me })) * 13n) / 10n;
+  const fee = await fees();
+  const cost = weiToUqorCeil(gas * fee.maxFeePerGas);
+  if (windowProblem(await windowStatus(acc), contracts.hourglass, cost)) console.log(`window: ${await openWindow(acc, [contracts.hourglass], cost)}`);
+  const hash = await wallet(acc.privateKey as Hex).writeContract({ address: contracts.hourglass, abi: registryAbi, functionName, args: args as any, gas, ...fee });
+  const rc = await pub.waitForTransactionReceipt({ hash });
+  return `${hash} -> ${rc.status}`;
+}
 
 const [cmd = "status", ...rest] = process.argv.slice(2);
 const fn = commands[cmd];

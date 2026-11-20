@@ -31,10 +31,11 @@ export const net_ = {
   evmRpc: env.QORE_EVM_RPC ?? "https://evm-testnet.qore.host",
 };
 
+/** v2 (20 Nov 2026). v1 (registry 0x5CF8…f1AA, exam 0x3494…c250) is retired: see deployments/testnet.json. */
 export const contracts = {
-  hourglass: (env.HOURGLASS ?? "0x5CF8c43C52483bF09F9a32D07a614250bd60f1AA") as Hex,
-  exam: (env.ZEROHOUR_EXAM ?? "0x3494389A2C3BC5ea6cc0749F23C6a864aEE9c250") as Hex,
-  examFromBlock: BigInt(env.EXAM_FROM_BLOCK ?? "10140062"),
+  hourglass: (env.HOURGLASS ?? "0xAF59A5e81c0F5D85ec79f3fE6F33Bd8A923fD834") as Hex,
+  exam: (env.ZEROHOUR_EXAM ?? "0x358545bc6d0321705f8944e32560681e788949ad") as Hex,
+  examFromBlock: BigInt(env.EXAM_FROM_BLOCK ?? "10434414"),
 };
 
 export const tuning = {
@@ -48,7 +49,7 @@ export const tuning = {
   logChunk: BigInt(env.LOG_CHUNK ?? 5_000),
   bondWei: BigInt(env.BOND_WEI ?? 10n ** 18n),
   roundSeconds: Number(env.ROUND_SECONDS ?? 300),
-  maxRound: Number(env.MAX_ROUND ?? 8640),
+  maxRound: Number(env.MAX_ROUND ?? 17_280), // 60 days of 5-minute rounds
   genesis: env.GENESIS ? Number(env.GENESIS) : undefined, // join an existing keyper clock (all keypers of an exam share it)
 };
 

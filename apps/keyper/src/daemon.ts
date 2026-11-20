@@ -163,6 +163,7 @@ export async function run(acc: UnifiedAccount, secret: ChainSecret, opts: RunOpt
           if (failing.reverts >= MAX_REVERTS) {
             log("giving-up", { round: p.round, reverts: failing.reverts, lastTx: r.hash, note: "stopped instead of burning gas; check the registry and the seed chain" });
             if (opts.once) throw new Error(`release of round ${p.round} reverted ${failing.reverts} times`);
+            process.exitCode = 3; // non-zero so a supervisor (systemd, pm2) notices and alerts
             return;
           }
           throw new Error(`release tx reverted${outOfGas ? " (out of gas; retrying with 1.5x gas)" : ""}: ${r.hash}`);

@@ -7,7 +7,7 @@
   "bin": { "zerohour-keyper": "src/cli.ts" },
   "scripts": {
     "keyper": "tsx src/cli.ts",
-    "keyper1": "KEYPER_HOME=../../secrets/keyper1-home KEYPER_ACCOUNT=../../secrets/drill.secret.json KEYPER_CHAIN=../../secrets/keyper1.secret.json tsx src/cli.ts",
+    "keyper1": "WINDOW_TXS=${WINDOW_TXS:-1} WINDOW_BLOCKS=${WINDOW_BLOCKS:-600} KEYPER_HOME=../../secrets/v2/keyper1-home KEYPER_ACCOUNT=../../secrets/drill.secret.json tsx src/cli.ts",
     "test": "node --import tsx --test test/*.test.ts",
     "typecheck": "tsc --noEmit"
   },
