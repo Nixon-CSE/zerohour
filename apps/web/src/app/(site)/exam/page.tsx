@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { centreLabel, examTitle } from "@/lib/names";
 import { Bubbles, Hash, Verdict, hms, span, useAsync, useChainNow, utc } from "@/components/zh";
-import { eq, loadExam, publicFile, sealedFor, verifyFairness, type ExamView, type TimelineEntry } from "@/lib/exam";
+import { eq, loadExam, publicFile, publicText, sealedFor, verifyFairness, type ExamView, type TimelineEntry } from "@/lib/exam";
 
 const describe = (t: TimelineEntry, v: ExamView) => {
   const k = (a: string) => `K${v.onchain.keypers.findIndex((x) => eq(x, a)) + 1}`;
@@ -20,7 +20,7 @@ const describe = (t: TimelineEntry, v: ExamView) => {
     case "release": return `${k(t.args.keyper)} posted its round ${t.args.round} seed`;
     case "opened": return `${c(t.args.centre)} opened ${t.args.backup ? "backup paper B" : "paper A"} and filed an ML-DSA-87 signed receipt`;
     case "leak": return `Leak Hunter reported a leaked copy traced to ${c(t.args.centre)} (confidence ${(t.args.confidenceBps / 100).toFixed(2)}%)`;
-    case "switched": return "Board switched every centre to the pre-sealed backup paper";
+    case "switched": return "Board retired paper A and switched every centre to the pre-sealed backup paper B";
     case "revealed": return "Board revealed the canonical paper and permutation seeds";
     case "slashed": return `${k(t.args.keyper)} was slashed for an early seed`;
   }
@@ -54,12 +54,48 @@ function Centres({ v }: { v: ExamView }) {
   );
 }
 
+interface SwitchEvidence {
+  set: string;
+  photoHash: Hex;
+  paperAUnlockedAtHunt: boolean;
+  reader: { model: string };
+  ranking: { centre: string; posterior: number; matches: number; observed: number }[];
+  population: { master: number; real: number; simulated: number };
+}
+
+/** The backup switch: the reason hash on chain must equal keccak256 of the published evidence file. */
+function SwitchCard({ v, t }: { v: ExamView; t: TimelineEntry }) {
+  const reason = t.args.reasonHash as Hex;
+  const f = useAsync(async () => {
+    const text = v.dir ? await publicText(v.dir, `switch-${reason.slice(0, 10)}.json`) : null;
+    return text ? { ok: eq(bytesToHex(k256(new TextEncoder().encode(text))), reason), ev: JSON.parse(text) as SwitchEvidence } : null;
+  }, [v.id, reason]);
+  const top = f.data?.ev.ranking[0];
+  const next = f.data?.ev.ranking[1];
+  return (
+    <article className="card alert">
+      <header>
+        <div><h3>Paper A retired, every centre moved to backup B</h3><span className="muted small">{t.time ? utc(t.time) : ""}{t.time ? `, ${span(v.unlockAt - t.time)} before B's bell` : ""}</span></div>
+        <Badge variant="destructive">Backup switch</Badge>
+      </header>
+      <dl>
+        <div><dt>Why</dt><dd>{top ? <>A leaked page matched the setters&apos; master copy at posterior {top.posterior.toFixed(6)} ({top.matches}/{top.observed}); the closest of {f.data!.ev.population.real + f.data!.ev.population.simulated} centre copies matched {next?.matches}/{next?.observed}. No centre ever holds that order, so no centre is accused.{f.data!.ev.paperAUnlockedAtHunt ? "" : " Paper A was still time-locked."}</> : f.loading ? <span className="pending">reading evidence…</span> : <span className="muted">evidence not published</span>}</dd></div>
+        <div><dt>Reason hash</dt><dd><Hash v={reason} />{f.data ? <><br /><Verdict ok={f.data.ok} yes="published evidence hashes to it" no="evidence does not match" /></> : null}</dd></div>
+        {f.data ? <div><dt>Read by</dt><dd>{f.data.ev.reader.model}, photo <Hash v={f.data.ev.photoHash} /></dd></div> : null}
+        <div><dt>Switch</dt><dd><Hash v={t.tx} kind="tx" n={4} /> <span className="muted small">signed by the board, ML-DSA-87</span></dd></div>
+      </dl>
+    </article>
+  );
+}
+
 function Leaks({ v }: { v: ExamView }) {
   const leaks = v.timeline.filter((t) => t.kind === "leak");
+  const switched = v.timeline.filter((t) => t.kind === "switched");
   const files = useAsync(async () => Promise.all(leaks.map((l) => (v.dir ? publicFile<{ envelope: Hex; evidenceHash: Hex }>(v.dir, `leak-${(l.args.evidenceHash as string).slice(0, 10)}.sealed.json`) : null))), [v.id]);
-  if (!leaks.length) return <p className="muted">No leak reports filed.</p>;
+  if (!leaks.length && !switched.length) return <p className="muted">No leak reports filed.</p>;
   return (
     <div className="cards">
+      {switched.map((t) => <SwitchCard key={t.tx} v={v} t={t} />)}
       {leaks.map((l, i) => {
         const f = files.data?.[i];
         const ok = f ? eq(bytesToHex(k256(hexToBytes(f.envelope))), l.args.sealedEvidenceRef) : undefined;
@@ -129,7 +165,7 @@ function Exam({ id }: { id: Hex }) {
         <div><h2>What happened</h2>
           <ol className="timeline">
             {v.timeline.map((t) => (
-              <li key={t.tx + t.kind + (t.args.keyper ?? t.args.centre ?? "")} className={t.kind === "leak" || t.kind === "slashed" ? "alert" : "done"}>
+              <li key={t.tx + t.kind + (t.args.keyper ?? t.args.centre ?? "")} className={t.kind === "leak" || t.kind === "slashed" || t.kind === "switched" ? "alert" : "done"}>
                 <time>{t.time ? utc(t.time) : ""}</time>
                 {describe(t, v)} <Hash v={t.tx} kind="tx" n={4} />
               </li>

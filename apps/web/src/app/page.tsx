@@ -273,7 +273,8 @@ function Proof() {
 }
 
 const FAQ = [
-  ["What if a keyper goes offline at the bell?", "Any 2 of the 3 seeds open the time lock. If the paper itself is compromised, the board switches every centre to a backup paper sealed to a later round, in one transaction."],
+  ["What if a keyper goes offline at the bell?", "Any 2 of the 3 seeds open the time lock, so one missing keyper changes nothing."],
+  ["What if the paper leaks before the exam anyway?", "Then it leaked from the setting room, because no centre can read its copy before the bell. The Leak Hunter can tell: a leaked page in the setters' own question order accuses no centre. The board switches every centre to a backup paper, sealed in advance to a later round, in one signed transaction. We ran exactly this on testnet, 13 minutes before the bell."],
   ["What stops the keypers from colluding?", "Two of them would have to share seeds before the bell. Anyone who sees an early seed can report it and take half that keyper's bond, so every accomplice is a potential informant. More outside keypers and a higher threshold raise the cost further."],
   ["Can the exam board read the paper early?", "The board writes the paper, so ZeroHour does not hide it from the board. It removes the readable copy from everyone after the board: the press, transport, and every centre. Splitting the paper across several setters is on the roadmap."],
   ["Why post-quantum?", "The ciphertexts are public weeks in advance and question banks are reused for years. ML-KEM-1024 and ML-DSA-87 keep sealed papers, receipts and slashing evidence safe against a future quantum attacker who records everything today."],

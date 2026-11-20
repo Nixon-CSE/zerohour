@@ -36,6 +36,12 @@ export async function publicFile<T>(dir: string, path: string): Promise<T | null
   return r.ok ? r.json() : null;
 }
 
+/** Raw text of a published file, for re-hashing exactly the bytes that were committed on chain. */
+export async function publicText(dir: string, path: string): Promise<string | null> {
+  const r = await fetch(`/deployments/${dir}/${path}`);
+  return r.ok ? r.text() : null;
+}
+
 export interface TimelineEntry {
   kind: "created" | "centre" | "release" | "opened" | "leak" | "switched" | "revealed" | "slashed";
   block: bigint;
