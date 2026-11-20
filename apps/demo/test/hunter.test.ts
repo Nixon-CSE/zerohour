@@ -7,7 +7,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { test } from "node:test";
 import { hexToBytes, makeVariant, type Paper } from "@zerohour/hourglass";
-import { matchToPaper, traceAndDecide, type Transcription } from "../src/hunter.ts";
+import { MASTER, masterCopy, matchToPaper, traceAndDecide, type Transcription } from "../src/hunter.ts";
 
 const reveal = JSON.parse(readFileSync(resolve(import.meta.dirname, "../../../deployments/demo/0xe54bb5d0/reveal.json"), "utf8"));
 const canonical: Paper = reveal.canonicalPaper;
@@ -66,4 +66,22 @@ test("a photo of Pune-17's copy is not pinned on Patna-05", () => {
   const t: Transcription = { legible: true, notes: "", questions: pune.paper.questions.slice(2, 7).map((q: any, i: number) => ({ number: 3 + i, text: q.text, options: q.options })) };
   const v = traceAndDecide(matchToPaper(t, canonical).observations, real, simulated);
   assert.equal(v.top?.centre, "centre-pune-17");
+});
+
+const master = masterCopy(canonical);
+
+test("a photo of the setters' master copy accuses no centre and calls for the backup paper", () => {
+  const t: Transcription = { legible: true, notes: "", questions: canonical.questions.slice(7, 12).map((q, i) => ({ number: 8 + i, text: q.text, options: q.options })) };
+  const v = traceAndDecide(matchToPaper(t, canonical).observations, real, simulated, master);
+  assert.equal(v.top?.centre, MASTER);
+  assert.equal(v.source, "master");
+  assert.equal(v.fileable, false, "no reportLeak against a centre");
+  assert.ok(v.top!.posterior >= 0.99, v.reason);
+});
+
+test("with the master copy in the running, a centre's copy is still pinned on that centre", () => {
+  const v = traceAndDecide(matchToPaper(photoOf(3, 7), canonical).observations, real, simulated, master);
+  assert.equal(v.top?.centre, "centre-patna-05");
+  assert.equal(v.source, "centre");
+  assert.ok(v.fileable, v.reason);
 });

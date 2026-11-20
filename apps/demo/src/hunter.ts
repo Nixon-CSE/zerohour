@@ -9,7 +9,9 @@
  *             are dropped, not guessed.
  *   3. Trace  The noisy-channel tracer (packages/hourglass) scores every centre's variant.
  *   4. Decide A report is filed only when the top match is a real centre at >= 99% posterior and the
- *             operator passed --file. Everything else is "inconclusive" and nothing goes on chain.
+ *             operator passed --file. If the top match is the setters' master copy (canonical order,
+ *             which no centre ever receives) the leak predates sealing: no centre is accused and the
+ *             board is told to switch to the backup paper. Everything else is "inconclusive".
  *
  * The evidence bundle keeps the photo's keccak hash, the model id, the API response id and the raw
  * transcription, so anyone holding the photo can re-run steps 2-4 and get the same answer.
@@ -225,22 +227,46 @@ export function matchToPaper(t: Transcription, canonical: Paper, minScore = 0.5,
 
 export const FILE_THRESHOLD = 0.99;
 
+/** Name of the extra candidate that stands for the setters' master copy (canonical order). */
+export const MASTER = "master-copy (setting room)";
+
+/**
+ * The paper exactly as the setters wrote it: canonical question order, canonical option order.
+ * No exam centre ever receives this order, so a leak that matches it came from before sealing.
+ */
+export function masterCopy(p: Paper): Variant {
+  return {
+    centre: MASTER,
+    order: p.questions.map((q) => q.id),
+    options: Object.fromEntries(p.questions.map((q) => [q.id, q.options.map((_, i) => i)])),
+    paper: p,
+    answerKey: p.questions.map((q) => "ABCDEFGH"[q.answer]),
+  };
+}
+
 export interface Verdict {
   ranking: TraceResult[];
   top: TraceResult | null;
   realCentres: number;
   simulatedCentres: number;
+  /** "centre": attributable to a real centre (file reportLeak). "master": the leak predates sealing (switch to backup). */
+  source: "centre" | "master" | null;
   fileable: boolean;
   reason: string;
 }
 
-export function traceAndDecide(observations: Observation[], real: Variant[], simulated: Variant[]): Verdict {
+export function traceAndDecide(observations: Observation[], real: Variant[], simulated: Variant[], master?: Variant): Verdict {
   const base = { realCentres: real.length, simulatedCentres: simulated.length };
-  if (observations.length < 2) return { ...base, ranking: [], top: null, fileable: false, reason: `only ${observations.length} usable observation(s); need at least 2` };
-  const ranking = traceLeak([...real, ...simulated], observations);
+  if (observations.length < 2) return { ...base, ranking: [], top: null, source: null, fileable: false, reason: `only ${observations.length} usable observation(s); need at least 2` };
+  const ranking = traceLeak([...(master ? [master] : []), ...real, ...simulated], observations);
   const top = ranking[0];
+  const confident = top.posterior >= FILE_THRESHOLD;
+  if (master && top.centre === master.centre) {
+    if (!confident) return { ...base, ranking, top, source: null, fileable: false, reason: `closest to the master copy but posterior ${top.posterior.toFixed(4)} is below ${FILE_THRESHOLD}; inconclusive` };
+    return { ...base, ranking, top, source: "master", fileable: false, reason: `matches the setters' master copy at posterior ${top.posterior.toFixed(6)} (${top.matches}/${top.observed}); no centre ever held this order, so the leak predates sealing: switch to the backup paper` };
+  }
   const isReal = real.some((v) => v.centre === top.centre);
-  if (!isReal) return { ...base, ranking, top, fileable: false, reason: `best match is a simulated centre (${top.centre}); not filing` };
-  if (top.posterior < FILE_THRESHOLD) return { ...base, ranking, top, fileable: false, reason: `posterior ${top.posterior.toFixed(4)} is below ${FILE_THRESHOLD}; inconclusive` };
-  return { ...base, ranking, top, fileable: true, reason: `${top.centre} at posterior ${top.posterior.toFixed(6)} (${top.matches}/${top.observed} observations agree)` };
+  if (!isReal) return { ...base, ranking, top, source: null, fileable: false, reason: `best match is a simulated centre (${top.centre}); not filing` };
+  if (!confident) return { ...base, ranking, top, source: null, fileable: false, reason: `posterior ${top.posterior.toFixed(4)} is below ${FILE_THRESHOLD}; inconclusive` };
+  return { ...base, ranking, top, source: "centre", fileable: true, reason: `${top.centre} at posterior ${top.posterior.toFixed(6)} (${top.matches}/${top.observed} observations agree)` };
 }
