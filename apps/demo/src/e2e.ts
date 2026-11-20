@@ -42,11 +42,13 @@ import { FILE_THRESHOLD, masterCopy, matchToPaper, readPhoto, readPhotoWithClaud
 
 const examAbi = parseAbi([
   "function createDigest(bytes32,address,address,address[],uint8,uint32,uint32,bytes32,bytes32,bytes32) view returns (bytes32)",
-  "function createExam(bytes32,address,address,address[],uint8,uint32,uint32,bytes32,bytes32,bytes32,bytes)",
+  "function createExam(bytes32 label,address,address,address[],uint8,uint32,uint32,bytes32,bytes32,bytes32,bytes)",
+  "function examIdOf(address,bytes32) pure returns (bytes32)",
+  "function receiptOf(bytes32,address,bool) view returns (bytes32)",
   "function centreDigest(bytes32,address,bytes32,bytes32,bytes32) view returns (bytes32)",
   "function addCentre(bytes32,address,bytes32,bytes32,bytes32,bytes)",
-  "function openDigest(bytes32,address,bool) view returns (bytes32)",
-  "function recordOpening(bytes32,address,bytes)",
+  "function openDigest(bytes32,address,bool,bytes32) view returns (bytes32)",
+  "function recordOpening(bytes32,address,bytes32,bytes)",
   "function leakDigest(bytes32,address,bytes32,uint16,bytes32) view returns (bytes32)",
   "function reportLeak(bytes32,address,bytes32,uint16,bytes32,bytes)",
   "function revealDigest(bytes32,bytes32,bytes32) view returns (bytes32)",
@@ -84,11 +86,11 @@ const numOpt = (args: string[], name: string, fallback: number) => {
 };
 
 // ------------------------------------------------------------------ keypers
+/** v2 keypers: same accounts and ML-DSA keys as v1, fresh seed chains in secrets/v2/. */
 const KEYPERS = [
-  { id: 1, env: { KEYPER_HOME: "secrets/keyper1-home", KEYPER_ACCOUNT: "secrets/drill.secret.json", KEYPER_CHAIN: "secrets/keyper1.secret.json" } },
-  { id: 2, env: { KEYPER_HOME: "secrets/keyper2-home" } },
-  { id: 3, env: { KEYPER_HOME: "secrets/keyper3-home" } },
-  { id: 4, env: { KEYPER_HOME: "secrets/keyper4-home" } }, // joins for the bribery exam
+  { id: 1, env: { KEYPER_HOME: "secrets/v2/keyper1-home", KEYPER_ACCOUNT: "secrets/drill.secret.json" } },
+  { id: 2, env: { KEYPER_HOME: "secrets/v2/keyper2-home", KEYPER_ACCOUNT: "secrets/keyper2-home/account.secret.json" } },
+  { id: 3, env: { KEYPER_HOME: "secrets/v2/keyper3-home", KEYPER_ACCOUNT: "secrets/keyper3-home/account.secret.json" } },
 ];
 const THRESHOLD = 2;
 
@@ -303,7 +305,9 @@ const commands: Record<string, (a: string[]) => Promise<void>> = {
 
     // 3. per-centre variants, sealed with both locks
     const label = `ZEROHOUR-${kind}-${new Date().toISOString().slice(0, 16)}`;
-    const examId = bytesToHex(k256(enc.encode(label)));
+    // v2: the exam id is derived on chain from (board, label), so nobody can squat it
+    const labelHash = bytesToHex(k256(enc.encode(label)));
+    const examId = await read<Hex>("examIdOf", [board.acc.evm, labelHash]);
     const [pA, pB] = [paper("a"), paper("b")];
     const st: ExamState = {
       examId, label, roundA, roundB,
@@ -333,7 +337,7 @@ const commands: Record<string, (a: string[]) => Promise<void>> = {
     const commitB = bytesToHex(k256(cat(hexToBytes(st.canonB), hexToBytes(st.saltB))));
     const manifestRoot = bytesToHex(merkleRoot(st.centres.map((c) => k256(cat(hexToBytes(c.evm), hexToBytes(c.ctHashA), hexToBytes(c.ctHashB))))));
     const cArgs = [examId, board.acc.evm, hunter.acc.evm, keypers, THRESHOLD, roundA, roundB, commitA, commitB, manifestRoot] as const;
-    st.txs.createExam = await relay(board, "createExam", [...cArgs, await sign(board, await read<Hex>("createDigest", cArgs))]);
+    st.txs.createExam = await relay(board, "createExam", [labelHash, ...cArgs.slice(1), await sign(board, await read<Hex>("createDigest", cArgs))]);
     for (const c of st.centres) {
       const permCommit = bytesToHex(k256(cat(hexToBytes(c.permSeedA), hexToBytes(c.permSeedB), hexToBytes(c.permSalt))));
       const a = [examId, c.evm, c.ctHashA, c.ctHashB, permCommit] as const;
@@ -375,11 +379,16 @@ const commands: Record<string, (a: string[]) => Promise<void>> = {
     say(`decrypted in ${(performance.now() - t0).toFixed(0)} ms: "${p.title}", ${p.questions.length} questions. Q1: ${p.questions[0].text}`);
     writeFileSync(resolve(SECRETS, `${c.name}-${set}.opened.json`), JSON.stringify(p, null, 2), { mode: 0o600 });
 
-    if (onchain[4] === 0n) {
-      const d = await read<Hex>("openDigest", [st.examId, c.evm, set === "B"]);
-      st.txs[`recordOpening:${c.name}`] = await relay(board, "recordOpening", [st.examId, c.evm, await sign(centre, d)]);
+    // v2 receipt: the centre signs keccak256 of the exact plaintext it decrypted. After the
+    // fairness reveal anyone can rebuild this centre's copy and check it is the committed one.
+    const paperHash = bytesToHex(k256(plain));
+    const existing = await read<Hex>("receiptOf", [st.examId, c.evm, set === "B"]);
+    if (BigInt(existing) === 0n) {
+      const d = await read<Hex>("openDigest", [st.examId, c.evm, set === "B", paperHash]);
+      st.txs[`recordOpening:${c.name}`] = await relay(board, "recordOpening", [st.examId, c.evm, paperHash, await sign(centre, d)]);
+      say(`  receipt names paper ${paperHash.slice(0, 18)}…`);
       saveState(st);
-    } else say(`receipt already on chain (openedAt ${new Date(Number(onchain[4]) * 1000).toISOString()})`);
+    } else say(`receipt already on chain for set ${set} (paper ${existing.slice(0, 18)}…)`);
   },
 
   async leak(args) {
@@ -600,7 +609,7 @@ const commands: Record<string, (a: string[]) => Promise<void>> = {
       centres: st.centres.map((c) => ({ name: c.name, evm: c.evm, permSeedA: c.permSeedA, permSeedB: c.permSeedB, permSalt: c.permSalt })),
       check: "keccak(canonicalPaperHash ‖ salt) == paperCommit on chain; keccak(permSeedA ‖ permSeedB ‖ permSalt) == permCommit; makeVariant(canonical, centre, permSeed) reproduces each sealed paper",
     });
-    say("fairness revealed: every centre's variant is provably a reordering of the same paper.");
+    say("fairness revealed: the canonical paper and every centre's order match the commitments made before the exam.");
   },
 
   async status() {

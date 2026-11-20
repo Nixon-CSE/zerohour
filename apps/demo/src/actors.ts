@@ -36,16 +36,26 @@ export const ACTORS: { name: string; role: Role; fundQor: number }[] = [
   { name: "centre-pune-17", role: "centre", fundQor: 0.5 },
   { name: "centre-patna-05", role: "centre", fundQor: 0.5 },
   { name: "whistleblower", role: "watcher", fundQor: 0.3 }, // anyone who gets hold of an early seed
+  // A centre whose recovery phrase is PUBLIC on purpose, so judges can open a real paper in the
+  // centre console. Fresh throwaway testnet account; it can only open its own copy.
+  { name: "centre-judges", role: "centre", fundQor: 0.25 },
 ];
 
+/** Actors whose phrase is published (deployments/demo/judge-centre.json) instead of kept secret. */
+const PUBLIC_PHRASE: Record<string, string> = { "centre-judges": resolve(PUBLIC, "judge-centre.json") };
+
 export async function loadActor(name: string, role: Role, create = false): Promise<Actor> {
-  const file = resolve(SECRETS, `${name}.secret.json`);
+  const pub_ = PUBLIC_PHRASE[name];
+  const file = pub_ ?? resolve(SECRETS, `${name}.secret.json`);
   if (!existsSync(file)) {
     if (!create) throw new Error(`no actor ${name} — run: npm run demo -- actors`);
-    mkdirSync(SECRETS, { recursive: true });
+    mkdirSync(dirname(file), { recursive: true });
     const mnemonic = generateMnemonic();
     const a = await deriveUnifiedAccount(mnemonic, 0);
-    writeFileSync(file, JSON.stringify({ purpose: `ZeroHour demo ${role} (testnet)`, mnemonic, evm: a.evm, cosmos: a.cosmos }, null, 2), { mode: 0o600 });
+    const purpose = pub_
+      ? "PUBLIC ON PURPOSE. ZeroHour judges' centre on QoreChain testnet: paste this phrase into the centre console to open its copy after the bell. Holds a few test QOR and can only open its own paper."
+      : `ZeroHour demo ${role} (testnet)`;
+    writeFileSync(file, JSON.stringify({ purpose, name, mnemonic, evm: a.evm, cosmos: a.cosmos }, null, 2), { mode: pub_ ? 0o644 : 0o600 });
   }
   const { mnemonic } = JSON.parse(readFileSync(file, "utf8"));
   return { name, role, acc: await deriveUnifiedAccount(mnemonic, 0), seal: deriveSealKeys({ mnemonic }) };
