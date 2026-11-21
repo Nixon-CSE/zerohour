@@ -52,7 +52,10 @@ Contracts referred to are the audited **v2** ones (`deployments/testnet.json`).
 
 1. **The board can read the paper** (T18). Next step: split authorship so no single setter holds a whole paper.
 2. **Piece-trading keypers are not slashable** (T5). Defence is lock 2 plus keyper independence.
-3. **All three keypers are run by us.** Independence is the point of a keyper set; recruiting outside keypers is in progress.
+3. **All keypers are run by us.** Independence is the point of a keyper set. The outside-keyper path works end to end
+   (exam 0x7bc70985: the board sealed to a keyper from its public key file alone), but that keyper is a test account we
+   operate; recruiting keypers from other teams is in progress. Running them on one machine also hurts liveness: in exam
+   0x74c361d3 the shared laptop slept and every keyper released 6 minutes after the bell (the lock held; the paper was late).
 4. **Testnet economics.** Bonds are 1 test QOR; a real exam would set bond and threshold far higher.
 5. **Block time.** Validators collectively choose timestamps; a skew of seconds moves the bell by seconds.
 6. **A centre's decryption key is a file on a computer.** The console takes only that key (the 32-byte QoreSeal

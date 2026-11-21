@@ -33,6 +33,7 @@ const REAL: [string, "live" | "next"][] = [
   ["v2 contracts after an internal audit: no keyper re-registration, exam ids bound to the board, keyper sets checked on chain, receipts per paper set", "live"],
   ["Leak Hunter reading a real phone photo with Claude vision", "live"],
   ["Backup-paper switch on a real leak, before the bell", "live"],
+  ["Outside-keyper path: an exam sealed to a keyper from its published public keys alone, each checked against its on-chain root (run with a test keyper we operate)", "live"],
   ["Outside keypers from other institutions", "next"],
   ["Multi-setter sealing so no single person holds the paper", "next"],
   ["Least-privilege hot key for keypers", "next"],

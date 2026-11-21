@@ -52,7 +52,7 @@ order against every centre's copy, and against the setters' master copy. A centr
 posterior; a match on the master copy accuses no centre and recommends switching to the backup paper.
 Details: [`apps/demo/README.md`](apps/demo/README.md).
 
-## Four real runs on testnet
+## Real runs on testnet
 
 | Exam | What it shows |
 |---|---|
@@ -60,6 +60,7 @@ Details: [`apps/demo/README.md`](apps/demo/README.md).
 | [Bribery, 16 Nov](https://zerohour-exam.vercel.app/exam/?id=0x2db24058ffccbd8251cc5cf93396a5d0c4c9dd0a8b6a2379bdfc7b064399c716) | A keyper sold its seed 15 min early. One seed opened nothing; a whistleblower proved it on chain and the keyper's bond was **slashed**. The exam opened on time. |
 | [Backup, 20 Nov](https://zerohour-exam.vercel.app/exam/?id=0x4c518322756d385729bea2e801f332b1b2aba2a7e100d7bc65f71585faae889a) | A page of paper A leaked **before** its bell in the setters' own order. The Leak Hunter accused no centre; the board moved every centre to backup paper B in one signed transaction; B opened at its own bell. |
 | [Public, 20 Nov](https://zerohour-exam.vercel.app/exam/?id=0x53cf9dc20c56b3abec5f0763981dab01f541fdb78cff5bc650c0c9d80e8670b0) | First exam on the audited **v2** contracts, with the judges' centre. Every receipt matches the reveal. |
+| [Outside keyper, 21 Nov](https://zerohour-exam.vercel.app/exam/?id=0x7bc70985a00c7ee5e22f067b1bec43162eeb73f6c16be0afa3eaf6542790658b) | 3 of 3, and the third keyper only ever sent the board its **public** round keys with Merkle proofs, each checked against its on-chain root. All three released 7-11 s after the bell. That keyper is a test account we run ourselves; no other team has joined yet. An [earlier attempt](https://zerohour-exam.vercel.app/exam/?id=0x74c361d34ccfddf0f48a4a810c27eaf5ebf10a98658c851b5fe5a84b30bfcfd5) released 6 min late because the one laptop running all three keypers fell asleep: the lock held, but liveness needs keypers on independent machines. |
 
 Each run's transactions are in `deployments/demo/<id>/run.json`. Contract addresses: [`deployments/testnet.json`](deployments/testnet.json).
 
