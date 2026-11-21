@@ -1,7 +1,8 @@
 {
-  "purpose": "PUBLIC ON PURPOSE. ZeroHour judges' centre on QoreChain testnet: paste this phrase into the centre console to open its copy after the bell. Holds a few test QOR and can only open its own paper.",
+  "purpose": "PUBLIC ON PURPOSE. ZeroHour judges' centre on QoreChain testnet. Paste `decryptionKey` into the centre console after the bell to open its copy. Holds a few test QOR and can only open its own paper.",
   "name": "centre-judges",
   "mnemonic": "music quarter horse talent gas effort bid voice depart coil problem shop",
   "evm": "0x42cAa5806f04b7AE51CFd4A0afB4dC08aeA0a303",
-  "cosmos": "qor1gt92tqr0qjm6u5w06js2ldxupzh2pgcruskwqj"
+  "cosmos": "qor1gt92tqr0qjm6u5w06js2ldxupzh2pgcruskwqj",
+  "decryptionKey": "zerohour-centre-key:a882a963b96354e7e9655fdace8e55481a29002ac3cac5f0ea258c1c7fe68eb7"
 }

@@ -520,6 +520,21 @@ const commands: Record<string, (a: string[]) => Promise<void>> = {
   },
 
   /**
+   * Export a centre's DECRYPTION key only: the 32-byte QoreSeal seed (HKDF of the BIP-39 seed under
+   * QoreSeal's own label). It opens that centre's copies and nothing else: it cannot recover the
+   * phrase, sign a transaction, move funds or file a receipt. This is what the centre console takes.
+   */
+  async "decryption-key"([name]) {
+    const spec = ACTORS.find((a) => a.name === name && a.role === "centre");
+    if (!spec) throw new Error(`usage: decryption-key <centre>; centres: ${ACTORS.filter((a) => a.role === "centre").map((a) => a.name).join(", ")}`);
+    const c = await loadActor(spec.name, "centre");
+    const key = `zerohour-centre-key:${bytesToHex(c.seal.seed).slice(2)}`;
+    const out = resolve(SECRETS, `${spec.name}.decryption-key.txt`);
+    writeFileSync(out, key + "\n", { mode: 0o600 });
+    say(`wrote ${out}\nload it in the centre console after the bell. It opens only ${spec.name}'s copies.`);
+  },
+
+  /**
    * The board moves every centre to the pre-sealed backup paper B in one ML-DSA-87 signed call.
    * The reason on chain is keccak256 of the evidence file, which is published as-is: paper A is
    * retired by the switch and the leaked text is public already, so anyone can re-hash it.

@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
-import { deriveSealKeys } from "@qorechain/qoreseal";
+import { sealKeysFromSeed } from "@qorechain/qoreseal";
 import { bytesToHex, hexToBytes, k256, makeVariant, openPaper, type Paper } from "@zerohour/hourglass";
 import type { Hex } from "viem";
 import { Bubbles, Hash, Verdict, span, useAsync, useChainNow, utc } from "@/components/zh";
@@ -11,6 +11,18 @@ import { Button } from "@/components/ui/button";
 import { chainSeed, eq, loadExam, publicFile, sealedFor, type ExamView, type Reveal } from "@/lib/exam";
 
 const LETTERS = "ABCDEFGH";
+
+/**
+ * A centre's decryption key: the 32-byte QoreSeal seed, written "zerohour-centre-key:<64 hex>".
+ * It opens that centre's copies only; it cannot sign, move funds or recover the account phrase.
+ */
+function parseCentreKey(text: string): Uint8Array {
+  const t = text.trim();
+  if (t.split(/\s+/).length >= 12) throw new Error("PHRASE");
+  const m = /^(?:zerohour-centre-key:)?(?:0x)?([0-9a-fA-F]{64})$/.exec(t);
+  if (!m) throw new Error("FORMAT");
+  return hexToBytes(m[1]);
+}
 
 function QuestionPaper({ p, centre, ms }: { p: Paper; centre: string; ms: number }) {
   return (
@@ -49,10 +61,10 @@ function Console({ v, centre }: { v: ExamView; centre: Hex }) {
     if (Object.keys(out).length >= v.onchain.threshold) setDone(true);
     return out;
   }, [v.id, round, done ? 0 : Math.floor(now / 10)]);
-  const [phrase, setPhrase] = useState("");
+  const [keyText, setKeyText] = useState("");
   const [result, setResult] = useState<{ paper?: Paper; ms?: number; error?: string; hash?: Hex }>({});
-  // The judges' centre publishes its phrase on purpose so anyone can try a real opening.
-  const judge = useAsync(async () => (c?.name === "centre-judges" && v.dir ? publicFile<{ mnemonic: string }>("demo", "judge-centre.json") : null), [c?.name]);
+  // The judges' centre publishes its decryption key on purpose so anyone can try a real opening.
+  const judge = useAsync(async () => (c?.name === "centre-judges" ? publicFile<{ decryptionKey: string }>("demo", "judge-centre.json") : null), [c?.name]);
   // After the fairness reveal, rebuild this centre's copy from the public reveal to compare.
   const reveal = useAsync(async () => (v.onchain.revealed && v.dir ? publicFile<Reveal>(v.dir, "reveal.json") : null), [v.id]);
   const [busy, setBusy] = useState(false);
@@ -68,14 +80,14 @@ function Console({ v, centre }: { v: ExamView; centre: Hex }) {
     setBusy(true);
     setResult({});
     try {
-      const keys = deriveSealKeys({ mnemonic: phrase.trim().toLowerCase().split(/\s+/).join(" ") });
+      const keys = sealKeysFromSeed(parseCentreKey(keyText));
       const t0 = performance.now();
       const plain = await openPaper(file.data.sealed, seeds.data ?? {}, keys);
       const ms = Math.round(performance.now() - t0);
       setResult({ paper: JSON.parse(new TextDecoder().decode(plain)), ms, hash: bytesToHex(k256(plain)) });
     } catch (e: any) {
       const m = String(e?.message ?? e);
-      setResult({ error: m.startsWith("locked") ? `Still locked: ${m.slice(8)}.` : /mnemonic|word|checksum/i.test(m) ? "That is not a valid recovery phrase. Check the spelling of each word." : `This key cannot open ${label}'s copy. It is sealed to a different centre key.` });
+      setResult({ error: m.startsWith("locked") ? `Still locked: ${m.slice(8)}.` : m === "PHRASE" ? "That looks like a recovery phrase. Never paste one here: it controls the whole account. Use the centre's decryption key file instead." : m === "FORMAT" ? "Paste the contents of the centre's decryption key file (zerohour-centre-key:…)." : `This key cannot open ${label}'s copy. It is sealed to a different centre key.` });
     } finally {
       setBusy(false);
     }
@@ -107,11 +119,12 @@ function Console({ v, centre }: { v: ExamView; centre: Hex }) {
         <div className="lock">
           <h3>Lock 2: this centre&apos;s key</h3>
           <p className="small muted">Sealed with QoreSeal (ML-KEM-1024 + X25519) to the key {label} registered on QoreChain. No other centre, and no keyper, can open it.</p>
-          <label htmlFor="phrase">Centre recovery phrase</label>
-          {judge.data?.mnemonic && <p className="small" style={{ margin: "4px 0 8px" }}>This is the judges&apos; centre: its phrase is public on purpose. <button type="button" className="underline font-semibold" onClick={() => setPhrase(judge.data!.mnemonic)}>Use the judges&apos; phrase</button></p>}
-          <textarea id="phrase" value={phrase} onChange={(e) => setPhrase(e.target.value)} spellCheck={false} autoComplete="off" placeholder="12 or 24 words, separated by spaces" />
-          <p className="small muted" style={{ marginTop: 8 }}>The phrase stays in this page: nothing is sent anywhere. A real centre would keep this key on a hardware device.</p>
-          <Button size="xl" onClick={open} disabled={busy || !phrase.trim() || !file.data?.matches || !timeOpen}>
+          <label htmlFor="centre-key">Centre decryption key</label>
+          {judge.data?.decryptionKey && <p className="small" style={{ margin: "4px 0 8px" }}>This is the judges&apos; centre: its key is public on purpose. <button type="button" className="underline font-semibold" onClick={() => setKeyText(judge.data!.decryptionKey)}>Use the judges&apos; key</button></p>}
+          <textarea id="centre-key" value={keyText} onChange={(e) => setKeyText(e.target.value)} spellCheck={false} autoComplete="off" placeholder="zerohour-centre-key:…" />
+          <input type="file" accept=".txt,text/plain" aria-label="Load the decryption key file" className="small mt-2" onChange={async (e) => { const f = e.target.files?.[0]; if (f) setKeyText((await f.text()).trim()); }} />
+          <p className="small muted" style={{ marginTop: 8 }}>The key stays in this page: nothing is sent anywhere. It can open this centre&apos;s copies and nothing else: it cannot sign, move funds or recover the account.</p>
+          <Button size="xl" onClick={open} disabled={busy || !keyText.trim() || !file.data?.matches || !timeOpen}>
             {busy ? "Opening…" : timeOpen ? "Open paper" : before ? `Opens at ${utc(v.unlockAt)}` : "Waiting for keyper seeds"}
           </Button>
           {result.error && <p className="err" style={{ marginTop: 12 }} role="alert">{result.error}</p>}
