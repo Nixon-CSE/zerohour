@@ -266,15 +266,22 @@ const commands: Record<string, (a: string[]) => Promise<void>> = {
     const minutes = numOpt(args, "--in", 10);
     const ids = args.includes("--keypers") ? args[args.indexOf("--keypers") + 1].split(",").map(Number) : [1, 2, 3];
     const chosen = KEYPERS.filter((k) => ids.includes(k.id));
-    if (chosen.length !== ids.length || chosen.length < THRESHOLD) throw new Error(`--keypers must name ${THRESHOLD}+ of ${KEYPERS.map((k) => k.id).join(",")}`);
+    // Outside keypers: run by someone else; we only ever see their PUBLIC round keys (export-pk --hours).
+    const outsideFiles = args.includes("--outside") ? args[args.indexOf("--outside") + 1].split(",") : [];
+    const threshold = numOpt(args, "--threshold", THRESHOLD);
+    const total = chosen.length + outsideFiles.length;
+    if (chosen.length !== ids.length || threshold < 2 || total < threshold) throw new Error(`need ${threshold}+ keypers (local: ${KEYPERS.map((k) => k.id).join(",")}; outside: --outside file.json)`);
     const kind = (args.includes("--kind") ? args[args.indexOf("--kind") + 1] : "demo").toUpperCase().replace(/[^A-Z]/g, "");
     const board = await loadActor("board", "board");
     const hunter = await loadActor("leak-hunter", "hunter");
     const centres = await Promise.all(ACTORS.filter((a) => a.role === "centre").map((a) => loadActor(a.name, "centre")));
 
     // 1. keypers: same clock, round keys verified against each keyper's on-chain pkRoot
-    const keypers = await Promise.all(chosen.map(keyperAddress));
-    const recs = await Promise.all(keypers.map(keyperRecord));
+    const outside = outsideFiles.map((f) => JSON.parse(readFileSync(f, "utf8")) as { keyper: Hex; registry: Hex; keys: { round: number; publicKey: Hex; proof: Hex[] }[] });
+    for (const o of outside) if (o.registry.toLowerCase() !== contracts.hourglass.toLowerCase()) throw new Error(`outside keyper ${o.keyper} published keys for registry ${o.registry}, not ${contracts.hourglass}`);
+    const keypers = [...(await Promise.all(chosen.map(keyperAddress))), ...outside.map((o) => o.keyper)];
+    if (new Set(keypers.map((k) => k.toLowerCase())).size !== keypers.length) throw new Error("a keyper is listed twice");
+    const recs = await Promise.all(keypers.map((k) => keyperRecord(k)));
     recs.forEach((r, i) => {
       if (!r.registered || r.slashed) throw new Error(`keyper #${i + 1} not usable`);
       if (r.genesis !== recs[0].genesis || r.roundSeconds !== recs[0].roundSeconds) throw new Error(`keyper #${i + 1} is on a different clock`);
@@ -293,6 +300,17 @@ const commands: Record<string, (a: string[]) => Promise<void>> = {
         roundKeys[key.round].push({ keyper: keypers[i], publicKey: pk });
       }
       say(`keyper #${k.id} ${keypers[i]}: round keys ${roundA}/${roundB} verified against on-chain pkRoot`);
+    }
+    for (const [j, o] of outside.entries()) {
+      const i = chosen.length + j;
+      for (const round of [roundA, roundB]) {
+        const key = o.keys.find((k) => k.round === round);
+        if (!key) throw new Error(`outside keyper ${o.keyper} has not published round ${round} (its file covers ${o.keys[0]?.round}-${o.keys.at(-1)?.round}); ask for a fresh export-pk --hours 48`);
+        const pk = hexToBytes(key.publicKey);
+        if (!verifyMerkle(pkLeaf(pk), round, key.proof.map(hexToBytes), hexToBytes(recs[i].pkRoot))) throw new Error(`outside keyper ${o.keyper}: bad Merkle proof for round ${round}`);
+        roundKeys[round].push({ keyper: keypers[i], publicKey: pk });
+      }
+      say(`OUTSIDE keyper ${o.keyper}: round keys ${roundA}/${roundB} verified against its on-chain pkRoot (we hold none of its secrets)`);
     }
 
     // 2. centres: recipient = on-chain ML-KEM key + hybrid-signed card, verified
@@ -313,13 +331,13 @@ const commands: Record<string, (a: string[]) => Promise<void>> = {
       examId, label, roundA, roundB,
       unlockA: new Date(roundTime(recs[0], roundA) * 1000).toISOString(),
       unlockB: new Date(roundTime(recs[0], roundB) * 1000).toISOString(),
-      keypers, threshold: THRESHOLD, saltA: bytesToHex(rand32()), saltB: bytesToHex(rand32()), canonA: canonHash(pA), canonB: canonHash(pB),
+      keypers, threshold, saltA: bytesToHex(rand32()), saltB: bytesToHex(rand32()), canonA: canonHash(pA), canonB: canonHash(pB),
       centres: [], txs: {},
     };
     for (const [i, c] of centres.entries()) {
       const permSeedA = rand32(), permSeedB = rand32(), permSalt = rand32();
       const sealSet = (p: Paper, seed: Uint8Array, round: number) =>
-        sealPaper({ plaintext: enc.encode(JSON.stringify(makeVariant(p, c.name, seed).paper)), chainId: net_.chainId, round, threshold: THRESHOLD, keypers: roundKeys[round], recipient: recipients[i] });
+        sealPaper({ plaintext: enc.encode(JSON.stringify(makeVariant(p, c.name, seed).paper)), chainId: net_.chainId, round, threshold, keypers: roundKeys[round], recipient: recipients[i] });
       const [sA, sB] = [await sealSet(pA, permSeedA, roundA), await sealSet(pB, permSeedB, roundB)];
       st.centres.push({
         name: c.name, evm: c.acc.evm as Hex, cosmos: c.acc.cosmos,
@@ -336,7 +354,7 @@ const commands: Record<string, (a: string[]) => Promise<void>> = {
     const commitA = bytesToHex(k256(cat(hexToBytes(st.canonA), hexToBytes(st.saltA))));
     const commitB = bytesToHex(k256(cat(hexToBytes(st.canonB), hexToBytes(st.saltB))));
     const manifestRoot = bytesToHex(merkleRoot(st.centres.map((c) => k256(cat(hexToBytes(c.evm), hexToBytes(c.ctHashA), hexToBytes(c.ctHashB))))));
-    const cArgs = [examId, board.acc.evm, hunter.acc.evm, keypers, THRESHOLD, roundA, roundB, commitA, commitB, manifestRoot] as const;
+    const cArgs = [examId, board.acc.evm, hunter.acc.evm, keypers, threshold, roundA, roundB, commitA, commitB, manifestRoot] as const;
     st.txs.createExam = await relay(board, "createExam", [labelHash, ...cArgs.slice(1), await sign(board, await read<Hex>("createDigest", cArgs))]);
     for (const c of st.centres) {
       const permCommit = bytesToHex(k256(cat(hexToBytes(c.permSeedA), hexToBytes(c.permSeedB), hexToBytes(c.permSalt))));
@@ -346,7 +364,7 @@ const commands: Record<string, (a: string[]) => Promise<void>> = {
     saveState(st);
     writePublic(st, "manifest.json", {
       exam: label, examId, contract: EXAM, hourglass: contracts.hourglass, chain: net_.chainId,
-      roundA, roundB, unlockA: st.unlockA, unlockB: st.unlockB, threshold: THRESHOLD, keypers,
+      roundA, roundB, unlockA: st.unlockA, unlockB: st.unlockB, threshold, keypers,
       board: board.acc.evm, leakHunter: hunter.acc.evm, paperCommitA: commitA, paperCommitB: commitB, manifestRoot,
       centres: st.centres.map((c) => ({ name: c.name, evm: c.evm, cosmos: c.cosmos, ctHashA: c.ctHashA, ctHashB: c.ctHashB, sealedA: `sealed/${c.name}-A.json`, sealedB: `sealed/${c.name}-B.json` })),
       txs: st.txs,

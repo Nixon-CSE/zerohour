@@ -50,7 +50,8 @@ export const tuning = {
   bondWei: BigInt(env.BOND_WEI ?? 10n ** 18n),
   roundSeconds: Number(env.ROUND_SECONDS ?? 300),
   maxRound: Number(env.MAX_ROUND ?? 17_280), // 60 days of 5-minute rounds
-  genesis: env.GENESIS ? Number(env.GENESIS) : undefined, // join an existing keyper clock (all keypers of an exam share it)
+  // All keypers of an exam must share one clock. Default: the ZeroHour v2 keyper clock (20 Nov 2026 13:05 UTC).
+  genesis: Number(env.GENESIS ?? 1_795_179_900),
 };
 
 export const chain = defineChain({

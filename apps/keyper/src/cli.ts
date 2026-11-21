@@ -142,8 +142,17 @@ const commands: Record<string, (a: string[]) => Promise<void>> = {
     const leaves = pkLeaves(secret);
     const root = merkleRoot(leaves);
     if (bytesToHex(root).toLowerCase() !== rec.pkRoot.toLowerCase()) throw new Error("local pk leaves do not match on-chain pkRoot");
-    const rounds = args.map(Number);
-    if (!rounds.length || rounds.some((r) => !Number.isInteger(r) || r < 0 || r > secret.maxRound)) throw new Error("usage: export-pk <round> [round…]");
+    // --hours N: every round of the next N hours (to publish for boards); otherwise explicit rounds
+    const hours = args.includes("--hours") ? Number(args[args.indexOf("--hours") + 1]) : 0;
+    const outFile = args.includes("--out") ? args[args.indexOf("--out") + 1] : undefined;
+    let rounds: number[];
+    if (hours > 0) {
+      const now = Math.floor(Date.now() / 1000);
+      const first = Math.max(rec.nextRound, Math.floor((now - rec.genesis) / rec.roundSeconds) + 1);
+      const last = Math.min(secret.maxRound, first + Math.ceil((hours * 3600) / rec.roundSeconds));
+      rounds = Array.from({ length: last - first + 1 }, (_, i) => first + i);
+    } else rounds = args.filter((a) => /^\d+$/.test(a)).map(Number);
+    if (!rounds.length || rounds.some((r) => !Number.isInteger(r) || r < 0 || r > secret.maxRound)) throw new Error("usage: export-pk <round> [round…] | export-pk --hours N [--out file.json]");
     const keys = rounds.map((round) => {
       if (round < rec.nextRound) throw new Error(`round ${round} is already revealed — sealing to it would be pointless`);
       const publicKey = roundKeypair(seedAt(hexToBytes(secret.top), secret.maxRound, round)).publicKey;
@@ -151,7 +160,11 @@ const commands: Record<string, (a: string[]) => Promise<void>> = {
       if (!verifyMerkle(pkLeaf(publicKey), round, proof, root)) throw new Error("self-check failed");
       return { round, publicKey: bytesToHex(publicKey), proof: proof.map(bytesToHex) };
     });
-    console.log(JSON.stringify({ keyper: acc.evm, registry: contracts.hourglass, pkRoot: rec.pkRoot, genesis: rec.genesis, roundSeconds: rec.roundSeconds, keys }));
+    const json = JSON.stringify({ keyper: acc.evm, registry: contracts.hourglass, pkRoot: rec.pkRoot, genesis: rec.genesis, roundSeconds: rec.roundSeconds, keys });
+    if (outFile) {
+      writeFileSync(outFile, json);
+      console.error(`wrote ${keys.length} round public keys (rounds ${keys[0].round}-${keys[keys.length - 1].round}) with Merkle proofs to ${outFile}. Public data: send it to the exam board.`);
+    } else console.log(json);
   },
 
   /** Start leaving: ML-DSA-87 signed; the bond unlocks after the registry's exit delay. */
