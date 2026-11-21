@@ -18,7 +18,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { weiToUqorCeil } from "@qorechain/evm";
 import { mldsa87 } from "@qorechain/pqc";
-import { anchorOf, bytesToHex, hexToBytes, k256, merkleProof, merkleRoot, pkLeaf, roundKeypair, seedAt, verifyMerkle } from "@zerohour/hourglass";
+import { anchorOf, bytesToHex, hexToBytes, k256, merkleLevels, merkleRoot, pkLeaf, proofFromLevels, roundKeypair, seedAt, verifyMerkle } from "@zerohour/hourglass";
 import { formatEther, toHex, type Hex } from "viem";
 import { contracts, net_, paths, tuning } from "./config.ts";
 import { run, type ChainSecret } from "./daemon.ts";
@@ -140,7 +140,8 @@ const commands: Record<string, (a: string[]) => Promise<void>> = {
     const rec = await keyperRecord(acc.evm as Hex);
     if (!rec.registered) throw new Error("not registered");
     const leaves = pkLeaves(secret);
-    const root = merkleRoot(leaves);
+    const levels = merkleLevels(leaves); // built once; every proof is then a few lookups
+    const root = levels[levels.length - 1][0];
     if (bytesToHex(root).toLowerCase() !== rec.pkRoot.toLowerCase()) throw new Error("local pk leaves do not match on-chain pkRoot");
     // --hours N: every round of the next N hours (to publish for boards); otherwise explicit rounds
     const hours = args.includes("--hours") ? Number(args[args.indexOf("--hours") + 1]) : 0;
@@ -153,10 +154,20 @@ const commands: Record<string, (a: string[]) => Promise<void>> = {
       rounds = Array.from({ length: last - first + 1 }, (_, i) => first + i);
     } else rounds = args.filter((a) => /^\d+$/.test(a)).map(Number);
     if (!rounds.length || rounds.some((r) => !Number.isInteger(r) || r < 0 || r > secret.maxRound)) throw new Error("usage: export-pk <round> [round…] | export-pk --hours N [--out file.json]");
+    // One walk down the chain: seed[r-1] = keccak(seed[r]), so start at the highest round and step down
+    // (rebuilding each seed from the top would cost maxRound hashes per round).
+    const sorted = [...new Set(rounds)].sort((x, y) => y - x);
+    const seeds = new Map<number, Uint8Array>();
+    let cur = seedAt(hexToBytes(secret.top), secret.maxRound, sorted[0]);
+    let at = sorted[0];
+    for (const r of sorted) {
+      while (at > r) { cur = k256(cur); at--; }
+      seeds.set(r, cur);
+    }
     const keys = rounds.map((round) => {
       if (round < rec.nextRound) throw new Error(`round ${round} is already revealed — sealing to it would be pointless`);
-      const publicKey = roundKeypair(seedAt(hexToBytes(secret.top), secret.maxRound, round)).publicKey;
-      const proof = merkleProof(leaves, round);
+      const publicKey = roundKeypair(seeds.get(round)!).publicKey;
+      const proof = proofFromLevels(levels, round);
       if (!verifyMerkle(pkLeaf(publicKey), round, proof, root)) throw new Error("self-check failed");
       return { round, publicKey: bytesToHex(publicKey), proof: proof.map(bytesToHex) };
     });
