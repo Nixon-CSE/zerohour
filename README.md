@@ -11,8 +11,8 @@ Live: **https://zerohour-exam.vercel.app** · every number on the site is read f
 
 1. Open the [Public exam of 20 Nov](https://zerohour-exam.vercel.app/exam/?id=0x53cf9dc20c56b3abec5f0763981dab01f541fdb78cff5bc650c0c9d80e8670b0).
    The bell was at 17:50 UTC; three bonded keypers posted their seeds 12–13 s later.
-2. On the **Judges' centre** card press **Open it yourself**, then **Use the judges' phrase**, then **Open paper**.
-   That centre's phrase is public on purpose ([`deployments/demo/judge-centre.json`](deployments/demo/judge-centre.json)).
+2. On the **Judges' centre** card press **Open it yourself**, then **Use the judges' key**, then **Open paper**.
+   That centre's decryption key is public on purpose ([`deployments/demo/judge-centre.json`](deployments/demo/judge-centre.json)).
    Your browser fetches the public ciphertext, checks it against the hash on chain, rebuilds the time key
    from the keypers' public seeds, and decrypts with the centre's ML-KEM-1024 key. Nothing is sent anywhere.
 3. Under the paper it confirms two things: this is **the copy that centre signed for on chain**, and it is

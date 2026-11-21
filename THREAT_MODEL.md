@@ -45,6 +45,7 @@ Contracts referred to are the audited **v2** ones (`deployments/testnet.json`).
 | T15 | Someone squats an exam id or fakes the threshold with a duplicated keyper | v2 derives the id from (board, label) and rejects duplicate, unregistered, slashed or off-clock keypers | `createExam`, `_checkKeypers`; v2 regression tests | Live |
 | T16 | An exited keyper re-registers to replay old signatures | v2 retires a keyper for good on withdrawal | `HourglassRegistry.retired`; v2 regression tests | Live |
 | T17 | Prompt injection in a leaked photo steers the Leak Hunter | The model only transcribes; it never sees centres or variants. Matching, tracing and the filing rule are code; framing a centre needs its secret order | `hunter.ts` | Live |
+| T19 | A centre operator exposes the account while opening the paper | The console accepts only the centre's decryption key (QoreSeal seed, HKDF-derived and one-way); pasted recovery phrases are refused | `apps/web/src/app/(site)/open/page.tsx`, `npm run demo -- decryption-key` | Live |
 | T18 | The exam board leaks the paper itself | Not prevented: the board writes it. Detected if the leak is in the master order (T7); unequal papers are caught by T9 | — | Next: multi-setter sealing |
 
 ## 4. Residual risks we accept today
@@ -54,8 +55,9 @@ Contracts referred to are the audited **v2** ones (`deployments/testnet.json`).
 3. **All three keypers are run by us.** Independence is the point of a keyper set; recruiting outside keypers is in progress.
 4. **Testnet economics.** Bonds are 1 test QOR; a real exam would set bond and threshold far higher.
 5. **Block time.** Validators collectively choose timestamps; a skew of seconds moves the bell by seconds.
-6. **The centre console takes a centre's recovery phrase**, which also controls its account. Acceptable for the
-   judges' centre (public on purpose); a real centre should load only its decryption key.
+6. **A centre's decryption key is a file on a computer.** The console takes only that key (the 32-byte QoreSeal
+   seed), never the account's recovery phrase, and refuses a pasted phrase; the key cannot sign or move funds.
+   A real centre would keep it on a hardware device.
 7. **Leak tracing is closed-world.** The posterior ranks the candidate set; 998 of the 1,000 traced centres are simulated. A leaker who re-orders questions evades attribution (but cannot frame another centre).
 
 ## 5. Audit log

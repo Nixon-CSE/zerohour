@@ -87,7 +87,8 @@ failing-by-design test for every suspected flaw before claiming it**:
 | The fairness check rebuilt each copy from the revealed seed and then checked that copy, so it could never fail | Overclaim | Reading `verifyFairness` | v2 receipts sign the decrypted paper's hash; the page compares them with the reveal |
 | Slashing catches a leaked *seed*, not a keyper handing over its decrypted piece of one paper | Overclaim in the site's threat table | Reasoning about what the contract can check | The site now says so, and why the second lock (a centre's key) is the real defence |
 | A page said "nobody can open it, the exam board included" | Overclaim | Grepping every strong claim | Rewritten |
-| Judges could not open a paper themselves | Gap | Looking for any public centre phrase | A judges' centre with a deliberately public phrase |
+| The centre console asked for the centre's whole recovery phrase, which also controls its account | Key-handling flaw | Reading the console | It now takes only the decryption key and refuses phrases |
+| Judges could not open a paper themselves | Gap | Looking for any public centre key | A judges' centre whose decryption key is public on purpose |
 
 The same pass confirmed what holds: 0 of 25 real secrets anywhere in git history (checked by
 deriving every key and searching the full history), no vulnerable production dependencies, all
