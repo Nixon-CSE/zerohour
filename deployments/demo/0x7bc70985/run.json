@@ -1,0 +1,68 @@
+{
+  "exam": "ZEROHOUR-OUTSIDE-2026-11-21T17:04",
+  "examId": "0x7bc70985a00c7ee5e22f067b1bec43162eeb73f6c16be0afa3eaf6542790658b",
+  "chain": "qorechain-diana",
+  "contracts": "v2 (ZeroHourExam 0x3585…49ad, HourglassRegistry 0xAF59…D834)",
+  "unlockA": "2026-11-21T17:15:00.000Z",
+  "story": "Outside-keyper path, end to end. The third keyper published only its round public keys with Merkle proofs (keyper export-pk); the board sealed to it with `exam --outside`, checking every key against that keyper's on-chain pkRoot, and never held its secrets. Threshold 3 of 3, so the paper could not open without it. Honest label: this outside keyper is a test account we run ourselves; no other team has joined yet. An earlier attempt the same afternoon (0x74c361d3) released 6 minutes late because the laptop hosting all three daemons went to sleep; its record says so.",
+  "timeline": [
+    {
+      "step": "outside keyper: setup + bond on v2, export-pk --hours 48 (public keys only)",
+      "txs": {
+        "register": "0xbda18af7d29e497478b9dca4bfe6fb55bf509327dec5b08c0a8e38d618babf6d"
+      }
+    },
+    {
+      "step": "createExam (keys of all three keypers verified against on-chain pkRoot) + addCentre x3",
+      "txs": {
+        "createExam": "0xe2aadc59b5f734bc6549a7276356ca7560d37ad3e9b18c48b2dcff89a5b12379",
+        "addCentre:centre-pune-17": "0xf86425e302fda07d321c88245cbb25b9b35b8cbadd1d44d16679bd8b36de56ae",
+        "addCentre:centre-patna-05": "0x6d6fd976cdf92af6708455844790787af4cc299e861725854b70423efebf66b4",
+        "addCentre:centre-judges": "0xaf0db8baf2b9628ef67b73e13c70dfd526159007d88bbec3aeea7b673618b61d"
+      }
+    },
+    {
+      "step": "before the bell: open attempt refused, locked 0/3"
+    },
+    {
+      "step": "bell 17:15:00 UTC: all three keypers release round 338",
+      "releases": [
+        {
+          "keyper": "keyper #1 (0x104C…2bc1)",
+          "round": 338,
+          "tx": "0x397e4a8f9f32a94e732f95b58c4aff374dbe7c03e8229d4950fdcd9d74f97893",
+          "block": "10505255",
+          "at": "2026-11-21T17:15:13.203Z"
+        },
+        {
+          "keyper": "keyper #2 (0x17aB…5BbA)",
+          "round": 338,
+          "tx": "0x7de2d8a358c81c3d3200889c1a58a9b675676b2455b1a9c56ce14b3eace7999f",
+          "block": "10505252",
+          "at": "2026-11-21T17:15:09.055Z"
+        },
+        {
+          "keyper": "test outside keyper (0xcbC4…3bF6) — run by us from its own home folder; the board only ever saw its public key file",
+          "round": 338,
+          "tx": "0xf5c3910047e597e8538025804e9ea18553c61b96c19778f70c9e4d27d21cc196",
+          "block": "10505252",
+          "at": "2026-11-21T17:15:09.055Z"
+        }
+      ]
+    },
+    {
+      "step": "centres decrypt; receipts name the paper hash",
+      "txs": {
+        "recordOpening:centre-pune-17": "0xe6a7d4fae0431fcd3b7bc3d073d67f18c013abdfbad519a4d7df34949b450e4c",
+        "recordOpening:centre-patna-05": "0x731e912d226ea57c260a11e56abd9bcd90905f1406d53b23e9ac7fd272608af7",
+        "recordOpening:centre-judges": "0x6ec67229c7988daa3788c983b7b8459e2a7e5ee634348ea0663b53457e1432c3"
+      }
+    },
+    {
+      "step": "fairness reveal",
+      "txs": {
+        "revealFairness": "0x9f9fb3fa0b4dbefd96996310c4975ddeab68e35da77c0ce68696a0085fbc8339"
+      }
+    }
+  ]
+}

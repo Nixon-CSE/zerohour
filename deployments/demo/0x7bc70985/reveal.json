@@ -1,0 +1,254 @@
+{
+  "canonicalPaper": {
+    "title": "ZeroHour Mock — Biology (Set A)",
+    "questions": [
+      {
+        "id": "A01",
+        "text": "Which organelle carries out oxidative phosphorylation?",
+        "options": [
+          "Mitochondrion",
+          "Golgi body",
+          "Lysosome",
+          "Ribosome"
+        ],
+        "answer": 0
+      },
+      {
+        "id": "A02",
+        "text": "The functional unit of the kidney is the:",
+        "options": [
+          "Neuron",
+          "Nephron",
+          "Alveolus",
+          "Villus"
+        ],
+        "answer": 1
+      },
+      {
+        "id": "A03",
+        "text": "Which base is found in RNA but not in DNA?",
+        "options": [
+          "Thymine",
+          "Adenine",
+          "Uracil",
+          "Guanine"
+        ],
+        "answer": 2
+      },
+      {
+        "id": "A04",
+        "text": "Bundle sheath cells are prominent in leaves of:",
+        "options": [
+          "C3 plants",
+          "CAM plants only",
+          "C4 plants",
+          "Bryophytes"
+        ],
+        "answer": 2
+      },
+      {
+        "id": "A05",
+        "text": "Which hormone lowers blood glucose?",
+        "options": [
+          "Glucagon",
+          "Insulin",
+          "Adrenaline",
+          "Cortisol"
+        ],
+        "answer": 1
+      },
+      {
+        "id": "A06",
+        "text": "Crossing over occurs during which stage of meiosis I?",
+        "options": [
+          "Leptotene",
+          "Zygotene",
+          "Pachytene",
+          "Diakinesis"
+        ],
+        "answer": 2
+      },
+      {
+        "id": "A07",
+        "text": "The pacemaker of the human heart is the:",
+        "options": [
+          "AV node",
+          "SA node",
+          "Bundle of His",
+          "Purkinje fibres"
+        ],
+        "answer": 1
+      },
+      {
+        "id": "A08",
+        "text": "Which enzyme unwinds the DNA double helix during replication?",
+        "options": [
+          "Ligase",
+          "Primase",
+          "Helicase",
+          "Topoisomerase"
+        ],
+        "answer": 2
+      },
+      {
+        "id": "A09",
+        "text": "Root nodules of legumes fix nitrogen using:",
+        "options": [
+          "Nitrogenase",
+          "Nitrate reductase",
+          "Urease",
+          "Amylase"
+        ],
+        "answer": 0
+      },
+      {
+        "id": "A10",
+        "text": "The 'master gland' of the endocrine system is the:",
+        "options": [
+          "Thyroid",
+          "Adrenal",
+          "Pituitary",
+          "Pancreas"
+        ],
+        "answer": 2
+      },
+      {
+        "id": "A11",
+        "text": "Which blood vessel carries oxygenated blood from lungs to heart?",
+        "options": [
+          "Pulmonary artery",
+          "Pulmonary vein",
+          "Vena cava",
+          "Aorta"
+        ],
+        "answer": 1
+      },
+      {
+        "id": "A12",
+        "text": "Haploid number of chromosomes in a human gamete is:",
+        "options": [
+          "46",
+          "23",
+          "22",
+          "44"
+        ],
+        "answer": 1
+      },
+      {
+        "id": "A13",
+        "text": "Which plant tissue conducts water upward?",
+        "options": [
+          "Phloem",
+          "Xylem",
+          "Cambium",
+          "Cortex"
+        ],
+        "answer": 1
+      },
+      {
+        "id": "A14",
+        "text": "Bile is produced by the:",
+        "options": [
+          "Gall bladder",
+          "Pancreas",
+          "Liver",
+          "Duodenum"
+        ],
+        "answer": 2
+      },
+      {
+        "id": "A15",
+        "text": "The site of the light reactions of photosynthesis is the:",
+        "options": [
+          "Stroma",
+          "Thylakoid membrane",
+          "Cytosol",
+          "Outer membrane"
+        ],
+        "answer": 1
+      },
+      {
+        "id": "A16",
+        "text": "A test cross is a cross between an F1 hybrid and its:",
+        "options": [
+          "Dominant parent",
+          "Recessive parent",
+          "Sibling",
+          "F2 progeny"
+        ],
+        "answer": 1
+      },
+      {
+        "id": "A17",
+        "text": "Which vitamin is synthesised in skin on exposure to sunlight?",
+        "options": [
+          "Vitamin A",
+          "Vitamin C",
+          "Vitamin D",
+          "Vitamin K"
+        ],
+        "answer": 2
+      },
+      {
+        "id": "A18",
+        "text": "Antibodies are produced by:",
+        "options": [
+          "T-helper cells",
+          "Plasma cells",
+          "Neutrophils",
+          "Platelets"
+        ],
+        "answer": 1
+      },
+      {
+        "id": "A19",
+        "text": "Restriction enzymes cut DNA at:",
+        "options": [
+          "Random sites",
+          "Palindromic sequences",
+          "Only telomeres",
+          "Introns only"
+        ],
+        "answer": 1
+      },
+      {
+        "id": "A20",
+        "text": "The largest lymphatic organ in humans is the:",
+        "options": [
+          "Thymus",
+          "Tonsil",
+          "Spleen",
+          "Appendix"
+        ],
+        "answer": 2
+      }
+    ]
+  },
+  "canonicalPaperHash": "0x9fd7a4e5d292ed53d54cba58f6cd16d51965ac189ce21cb327ba78649a75407c",
+  "salt": "0x7839ebbbcc59a52979284702e1c04dc5d80feff5a92634a5c9be3b578e0f0999",
+  "set": "A",
+  "centres": [
+    {
+      "name": "centre-pune-17",
+      "evm": "0x13e39273957F818746Fd38384374F3ff850E2E8f",
+      "permSeedA": "0xd5425daf0e614ba1a948fe05067a45aa41f5263723d21d7192cc577866759ba3",
+      "permSeedB": "0x9081a6200c9ac0458f7261967d1e9aa5627f248ac5c16460a4787e73cdf9c86e",
+      "permSalt": "0x7ff60b0155361f5f66761412834aa00766f731f4d461919442319699c1805cd2"
+    },
+    {
+      "name": "centre-patna-05",
+      "evm": "0xB82Be3565EA2C31475D791778F8C1eEF6338dce9",
+      "permSeedA": "0xdfe77c07e6c5dc914aabc4df3d4c95c702d6bae5ea09cc787667f64d0116c486",
+      "permSeedB": "0xace9ee8316b62a6adf19d2923d5d7a5728577087985019aeee00dd59e8934b45",
+      "permSalt": "0xc989455e3900e1d0de70c4c82b4beb02789b277c22bac3da3a9577d8f23a45f2"
+    },
+    {
+      "name": "centre-judges",
+      "evm": "0x42cAa5806f04b7AE51CFd4A0afB4dC08aeA0a303",
+      "permSeedA": "0xbc7cbf112524018fc19cb37d1a367ad9abdd88fe1f47efa2d9c0c412cafb8f03",
+      "permSeedB": "0x5ac6bb0d0989316fb6594962a08122fc8c964d3890b18c5000ed08efe43f28c3",
+      "permSalt": "0x6a79124fc4ffb1eefa5410417a86818798b5663341754e00e1d8794d6c78f1c9"
+    }
+  ],
+  "check": "keccak(canonicalPaperHash ‖ salt) == paperCommit on chain; keccak(permSeedA ‖ permSeedB ‖ permSalt) == permCommit; makeVariant(canonical, centre, permSeed) reproduces each sealed paper"
+}
