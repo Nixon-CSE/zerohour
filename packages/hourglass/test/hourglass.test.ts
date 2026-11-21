@@ -127,3 +127,18 @@ test("a leaked photo of 4 questions (order + first option) identifies the centre
   assert.equal(top.centre, "centre-17");
   assert.ok(top.posterior > 0.999);
 });
+
+test("merkleLevels + proofFromLevels give exactly merkleProof's proofs and root", async () => {
+  const { merkleLevels, proofFromLevels, merkleProof, merkleRoot, verifyMerkle, k256 } = await import("../src/chain.ts");
+  for (const n of [1, 2, 7, 33]) {
+    const leaves = Array.from({ length: n }, (_, i) => k256(new Uint8Array([i, n])));
+    const levels = merkleLevels(leaves);
+    const root = merkleRoot(leaves);
+    assert.deepEqual(levels.at(-1)![0], root);
+    for (let i = 0; i < n; i++) {
+      assert.deepEqual(proofFromLevels(levels, i), merkleProof(leaves, i));
+      assert.ok(verifyMerkle(leaves[i], i, proofFromLevels(levels, i), root));
+    }
+  }
+});
+

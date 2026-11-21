@@ -67,6 +67,35 @@ export function merkleProof(leaves: Uint8Array[], index: number): Uint8Array[] {
   return proof;
 }
 
+/** Every level of the tree, built once (leaves first, root last). */
+export function merkleLevels(leaves: Uint8Array[]): Uint8Array[][] {
+  if (leaves.length === 0) throw new Error("no leaves");
+  const levels = [leaves];
+  while (levels[levels.length - 1].length > 1) {
+    const level = levels[levels.length - 1];
+    const next: Uint8Array[] = [];
+    for (let i = 0; i < level.length; i += 2) {
+      const l = level[i], r = level[i + 1] ?? level[i];
+      const both = new Uint8Array(l.length + r.length);
+      both.set(l); both.set(r, l.length);
+      next.push(k256(both));
+    }
+    levels.push(next);
+  }
+  return levels;
+}
+
+/** Same proof as merkleProof(), read from prebuilt levels: O(log n) instead of rebuilding the tree. */
+export function proofFromLevels(levels: Uint8Array[][], index: number): Uint8Array[] {
+  const proof: Uint8Array[] = [];
+  let i = index;
+  for (let d = 0; d < levels.length - 1; d++) {
+    proof.push(levels[d][i ^ 1] ?? levels[d][i]);
+    i >>= 1;
+  }
+  return proof;
+}
+
 export function verifyMerkle(leaf: Uint8Array, index: number, proof: Uint8Array[], root: Uint8Array): boolean {
   let h = leaf;
   let i = index;
