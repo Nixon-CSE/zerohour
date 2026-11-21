@@ -2,8 +2,8 @@
 
 The Hourglass keyper daemon. A keyper holds one 32-byte secret, the top of a hash chain.
 Every 5 minutes a new round "opens", and the keyper publishes that round's seed on QoreChain.
-Any paper sealed to round *r* needs ≥ *t* keypers' round-*r* seeds, so nobody can open it
-before then, the keypers included, unless *t* of them collude. A keyper who publishes a seed early
+Any paper sealed to round *r* needs ≥ *t* keypers' round-*r* seeds, so no centre can open it
+before then. Keypers cannot read papers either: each copy is also sealed to its centre's own key. A keyper who publishes a seed early
 can be **slashed**: anyone holding the early seed can commit-reveal it and take half the bond.
 
 ## The one rule
