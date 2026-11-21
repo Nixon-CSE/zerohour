@@ -1,0 +1,196 @@
+{
+  "kind": "zerohour-switch-evidence-v1",
+  "examId": "0x4da31f8134603dfccaaa4fa59a19c4d7f501a47acfd20f407260e476803ed94f",
+  "set": "A",
+  "photoHash": "0x122e52ae5d0e2290c46c38857f389debd19c8d36c29b6d08b8a2a5ea5c5d335a",
+  "reader": {
+    "model": "claude-code:claude-opus-5-5",
+    "responseId": "d341eb76-5918-4d37-b16b-bff0e88241d4",
+    "transcription": {
+      "legible": true,
+      "questions": [
+        {
+          "number": 8,
+          "text": "Which enzyme unwinds the DNA double helix during replication?",
+          "options": [
+            "Ligase",
+            "Primase",
+            "Helicase",
+            "Topoisomerase"
+          ]
+        },
+        {
+          "number": 9,
+          "text": "Root nodules of legumes fix nitrogen using:",
+          "options": [
+            "Nitrogenase",
+            "Nitrate reductase",
+            "Urease",
+            "Amylase"
+          ]
+        },
+        {
+          "number": 10,
+          "text": "The 'master gland' of the endocrine system is the:",
+          "options": [
+            "Thyroid",
+            "Adrenal",
+            "Pituitary",
+            "Pancreas"
+          ]
+        },
+        {
+          "number": 11,
+          "text": "Which blood vessel carries oxygenated blood from lungs to heart?",
+          "options": [
+            "Pulmonary artery",
+            "Pulmonary vein",
+            "Vena cava",
+            "Aorta"
+          ]
+        },
+        {
+          "number": 12,
+          "text": "Haploid number of chromosomes in a human gamete is:",
+          "options": [
+            "46",
+            "23",
+            "22",
+            "44"
+          ]
+        }
+      ],
+      "notes": "The photo shows one page of a printed paper headed 'ZeroHour Mock — Biology (Set A)', with the line 'Time: 3 hours  Maximum marks: 720  Page 2'. The page is slightly rotated, but all text is clear. Questions 8 to 12 are fully visible and none are cut off. No answers are marked on the page."
+    }
+  },
+  "matched": [
+    {
+      "printedNumber": 8,
+      "questionId": "A08",
+      "textScore": 1,
+      "firstOption": "Ligase"
+    },
+    {
+      "printedNumber": 9,
+      "questionId": "A09",
+      "textScore": 1,
+      "firstOption": "Nitrogenase"
+    },
+    {
+      "printedNumber": 10,
+      "questionId": "A10",
+      "textScore": 1,
+      "firstOption": "Thyroid"
+    },
+    {
+      "printedNumber": 11,
+      "questionId": "A11",
+      "textScore": 1,
+      "firstOption": "Pulmonary artery"
+    },
+    {
+      "printedNumber": 12,
+      "questionId": "A12",
+      "textScore": 1,
+      "firstOption": "46"
+    }
+  ],
+  "observations": [
+    {
+      "position": 7,
+      "questionId": "A08",
+      "firstOption": "Ligase"
+    },
+    {
+      "position": 8,
+      "questionId": "A09",
+      "firstOption": "Nitrogenase"
+    },
+    {
+      "position": 9,
+      "questionId": "A10",
+      "firstOption": "Thyroid"
+    },
+    {
+      "position": 10,
+      "questionId": "A11",
+      "firstOption": "Pulmonary artery"
+    },
+    {
+      "position": 11,
+      "questionId": "A12",
+      "firstOption": "46"
+    }
+  ],
+  "ranking": [
+    {
+      "centre": "master-copy (setting room)",
+      "posterior": 0.9999999999991522,
+      "matches": 10,
+      "observed": 10
+    },
+    {
+      "centre": "simulated-centre-751",
+      "posterior": 7.269192561379164e-13,
+      "matches": 4,
+      "observed": 10
+    },
+    {
+      "centre": "simulated-centre-42",
+      "posterior": 1.1477672465335558e-13,
+      "matches": 4,
+      "observed": 10
+    },
+    {
+      "centre": "simulated-centre-332",
+      "posterior": 2.0136267483044927e-15,
+      "matches": 3,
+      "observed": 10
+    },
+    {
+      "centre": "simulated-centre-232",
+      "posterior": 2.0136267483044785e-15,
+      "matches": 3,
+      "observed": 10
+    },
+    {
+      "centre": "simulated-centre-641",
+      "posterior": 2.0136267483044785e-15,
+      "matches": 3,
+      "observed": 10
+    },
+    {
+      "centre": "simulated-centre-32",
+      "posterior": 3.5326785057973584e-17,
+      "matches": 2,
+      "observed": 10
+    },
+    {
+      "centre": "simulated-centre-121",
+      "posterior": 3.5326785057973584e-17,
+      "matches": 2,
+      "observed": 10
+    },
+    {
+      "centre": "simulated-centre-305",
+      "posterior": 3.5326785057973584e-17,
+      "matches": 2,
+      "observed": 10
+    },
+    {
+      "centre": "simulated-centre-348",
+      "posterior": 3.5326785057973584e-17,
+      "matches": 2,
+      "observed": 10
+    }
+  ],
+  "verdict": "matches the setters' master copy at posterior 1.000000 (10/10); no centre ever held this order, so the leak predates sealing: switch to the backup paper",
+  "paperAUnlockedAtHunt": false,
+  "population": {
+    "master": 1,
+    "real": 3,
+    "simulated": 998
+  },
+  "method": "Claude transcribes; deterministic text match; noisy-channel posterior over the master copy and every centre's permutation, epsilon=0.05",
+  "at": "2026-11-21T17:25:45.191Z"
+}

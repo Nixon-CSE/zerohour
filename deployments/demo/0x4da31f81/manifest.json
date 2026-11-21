@@ -1,0 +1,57 @@
+{
+  "exam": "ZEROHOUR-BACKUP-2026-11-21T17:24",
+  "examId": "0x4da31f8134603dfccaaa4fa59a19c4d7f501a47acfd20f407260e476803ed94f",
+  "contract": "0x358545bc6d0321705f8944e32560681e788949ad",
+  "hourglass": "0xAF59A5e81c0F5D85ec79f3fE6F33Bd8A923fD834",
+  "chain": "qorechain-diana",
+  "roundA": 343,
+  "roundB": 346,
+  "unlockA": "2026-11-21T17:40:00.000Z",
+  "unlockB": "2026-11-21T17:55:00.000Z",
+  "threshold": 2,
+  "keypers": [
+    "0x104C6d4f856f0e3CbC5c92474BF18AE19b882bc1",
+    "0x17aB3569aF1136D8CF22Ccc83b22ec73a4FE5BbA",
+    "0x2E547cA9A3b7697b1fF8833c0D59D922dBCdab06"
+  ],
+  "board": "0xe1FD768beFA0516Ef3dBf7bFc80aAC471298F9dA",
+  "leakHunter": "0x1A691732d5056Af8628883732E4240817514Fde3",
+  "paperCommitA": "0x8454ca6c0017001975351b50d80578055580d7f0a9acc956f79e5b1acb3197c9",
+  "paperCommitB": "0xadc239ccb72673b87c880225a98f007ce6d8fa2bb6b040d5b8f70bb64302f954",
+  "manifestRoot": "0x331db1b65385d04d41aebc249ddc5f3cf8b1e2e4ec53351b20388b088786cbae",
+  "centres": [
+    {
+      "name": "centre-pune-17",
+      "evm": "0x13e39273957F818746Fd38384374F3ff850E2E8f",
+      "cosmos": "qor1z03eyuu407qcw3ha8quyxa8nl7zsut508s53uc",
+      "ctHashA": "0xaf31127cce8458d13382bb1b68ba25c5a0325b7e0bc092bed221aec0ce821deb",
+      "ctHashB": "0x06dd5fcf39f1bbe9e1e7056ad2ee55a17d31eb3d7a8859ebf15e8740498a4666",
+      "sealedA": "sealed/centre-pune-17-A.json",
+      "sealedB": "sealed/centre-pune-17-B.json"
+    },
+    {
+      "name": "centre-patna-05",
+      "evm": "0xB82Be3565EA2C31475D791778F8C1eEF6338dce9",
+      "cosmos": "qor1hq47x4j75tp3gawhj9mclrq7aa3n3h8fxs327j",
+      "ctHashA": "0x692b8c2e32c9f94e1b5bf9f282a91cbfd3a85c8c331f67033ba03080022ee6bd",
+      "ctHashB": "0xec8e5b4f0bb910b6802240fbf1901fd4914a57e10e28c39a0c9c31815e9ce062",
+      "sealedA": "sealed/centre-patna-05-A.json",
+      "sealedB": "sealed/centre-patna-05-B.json"
+    },
+    {
+      "name": "centre-judges",
+      "evm": "0x42cAa5806f04b7AE51CFd4A0afB4dC08aeA0a303",
+      "cosmos": "qor1gt92tqr0qjm6u5w06js2ldxupzh2pgcruskwqj",
+      "ctHashA": "0xafb91faeac76ad1aca2f8a4a0624bffd74a7d47122bc5d9b5dcce225b4cbf400",
+      "ctHashB": "0x4b1f0504082866b59fd2e1958dcd93c6080fe7b8936e919b10e12320949322cd",
+      "sealedA": "sealed/centre-judges-A.json",
+      "sealedB": "sealed/centre-judges-B.json"
+    }
+  ],
+  "txs": {
+    "createExam": "0x4085d4b0e0b9ee3ae62f79705462ec71c0209517364b31002e515f96c97cf524",
+    "addCentre:centre-pune-17": "0xf54c73b70b3c5bd5ff5fd6d4fcae06ed3523f9ff3a9f4001ec39f981f959c33e",
+    "addCentre:centre-patna-05": "0x3a74e434f6596eaa21fafdc4bd4149114ddf2a53a10128266c35659ec3c42db5",
+    "addCentre:centre-judges": "0x895d220dd63d507171251399b595e10920fcb315337609a2ac093acf11faaee6"
+  }
+}

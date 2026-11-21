@@ -1,0 +1,70 @@
+{
+  "exam": "ZEROHOUR-BACKUP-2026-11-21T17:24",
+  "examId": "0x4da31f8134603dfccaaa4fa59a19c4d7f501a47acfd20f407260e476803ed94f",
+  "chain": "qorechain-diana",
+  "contracts": "v2 (ZeroHourExam 0x3585…49ad, HourglassRegistry 0xAF59…D834)",
+  "unlockA": "2026-11-21T17:40:00.000Z",
+  "unlockB": "2026-11-21T17:55:00.000Z",
+  "story": "The backup story on the audited v2 contracts. A page of paper A (Q8-12) leaked from the setting room in the setters' own question order. The Leak Hunter (Claude reads the image, code decides) matched it to the master copy at posterior 1.000000 (10/10); the best of 1,000 centre copies matched 4/10, so no centre was accused. The board retired paper A in one ML-DSA-87 signed switchToBackup 14 minutes before A's bell; the on-chain reason is the hash of the published evidence file. Backup paper B opened at its own bell for all three centres.",
+  "timeline": [
+    {
+      "step": "createExam (keypers #1-#3, threshold 2; A round 343, B round 346) + addCentre x3",
+      "txs": {
+        "createExam": "0x4085d4b0e0b9ee3ae62f79705462ec71c0209517364b31002e515f96c97cf524",
+        "addCentre:centre-pune-17": "0xf54c73b70b3c5bd5ff5fd6d4fcae06ed3523f9ff3a9f4001ec39f981f959c33e",
+        "addCentre:centre-patna-05": "0x3a74e434f6596eaa21fafdc4bd4149114ddf2a53a10128266c35659ec3c42db5",
+        "addCentre:centre-judges": "0x895d220dd63d507171251399b595e10920fcb315337609a2ac093acf11faaee6"
+      }
+    },
+    {
+      "step": "17:25 UTC: Leak Hunter reads a photo of the setters' master copy: pre-distribution leak, nobody accused"
+    },
+    {
+      "step": "17:26 UTC: board switches every centre to paper B",
+      "txs": {
+        "switchToBackup": "0x40f311b9c1e920d6f0e4f01b2738be6c017935ee8bf254443e99eab3b894cd01"
+      },
+      "evidence": "deployments/demo/0x4da31f81/switch-0x86e44d52.json"
+    },
+    {
+      "step": "bell B 17:55:00 UTC: all three keypers release round 346",
+      "releases": [
+        {
+          "keyper": "keyper #1 (0x104C…2bc1)",
+          "round": 346,
+          "tx": "0xcd120c4bed83a83d6a19a8800bada132db408d3704fc781e6162db8c0d111b13",
+          "block": "10506939",
+          "at": "2026-11-21T17:55:15.497Z"
+        },
+        {
+          "keyper": "keyper #2 (0x17aB…5BbA)",
+          "round": 346,
+          "tx": "0x91c8e49425b3cfee27242225e5605c50927fe894fa728bba2efee9d195745460",
+          "block": "10506935",
+          "at": "2026-11-21T17:55:09.502Z"
+        },
+        {
+          "keyper": "keyper #3 (0x2E54…ab06)",
+          "round": 346,
+          "tx": "0x28e4a9e62862f673eebf53549462965c0166d8ea318b81b64f1baeecefed0919",
+          "block": "10506936",
+          "at": "2026-11-21T17:55:10.959Z"
+        }
+      ]
+    },
+    {
+      "step": "centres decrypt paper B; receipts name the paper hash",
+      "txs": {
+        "recordOpening:centre-pune-17": "0x522d9b682f7d52bd2f92c88a67f1ab0998a427ee8ecc011ed9ec5e8bd6a0511e",
+        "recordOpening:centre-patna-05": "0x811858922f0ebeb1ff806991edc3bde0adc45837db4c9659ed02866044df9497",
+        "recordOpening:centre-judges": "0x3f03553c9fb35549c5716dc641699f19fd0bbf9e9275fc9053b7a0dcb93d914c"
+      }
+    },
+    {
+      "step": "fairness reveal for paper B",
+      "txs": {
+        "revealFairness": "0x59b97b7cd5f3e807fbccc9b64aab1eb8c2a1c70f8c6a9f513f80dacff8a21d32"
+      }
+    }
+  ]
+}
