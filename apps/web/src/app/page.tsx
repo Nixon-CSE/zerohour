@@ -1,7 +1,7 @@
 "use client";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowUpRight, Lock, KeyRound, Timer } from "lucide-react";
 import { hexToBytes, makeVariant } from "@zerohour/hourglass";
 import { Button } from "@/components/ui/button";
@@ -35,6 +35,14 @@ function Hero() {
   const released = latest ? latest.keypers.map((k) => latest.round < k.nextRound) : [false, false, false];
   const early = reg.data?.releases.filter((r) => r.time < r.unlockAt).length;
   const still = mounted && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  // three.js is ~270 KB compressed: start it once the browser is idle (at most 1.5 s), so the
+  // first chain reads are not competing with it for bandwidth on a slow connection.
+  const [sceneReady, setSceneReady] = useState(false);
+  useEffect(() => {
+    const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number };
+    if (w.requestIdleCallback) w.requestIdleCallback(() => setSceneReady(true), { timeout: 1500 });
+    else { const t = setTimeout(() => setSceneReady(true), 300); return () => clearTimeout(t); }
+  }, []);
 
   return (
     <section className="hero" aria-labelledby="hero-title">
@@ -63,7 +71,7 @@ function Hero() {
           </dl>
         </div>
         <figure className="hero-scene">
-          <Scene progress={progress} released={released} still={still} />
+          {sceneReady ? <Scene progress={progress} released={released} still={still} /> : <div className="scene-wait" aria-hidden />}
           <figcaption>
             The sand is the current 5-minute keyper round on chain time. The orbs are the keypers of the latest exam, solid once their seed is public.
           </figcaption>
