@@ -1,0 +1,51 @@
+{
+  "exam": "ZEROHOUR-OUTSIDE-2026-11-21T16:12",
+  "examId": "0x74c361d34ccfddf0f48a4a810c27eaf5ebf10a98658c851b5fe5a84b30bfcfd5",
+  "chain": "qorechain-diana",
+  "contracts": "v2 (ZeroHourExam 0x3585…49ad, HourglassRegistry 0xAF59…D834)",
+  "unlockA": "2026-11-21T16:25:00.000Z",
+  "story": "First outside-keyper attempt. It shows a real failure mode: all three keyper daemons ran on one laptop, which went into idle sleep on battery at 16:15:33 UTC and woke at 16:31. Every keyper released round 328 about six minutes after the bell. The lock held (nothing opened early), but liveness depends on keypers staying online, which is why keypers should be independent machines. No centre opened this exam and no fairness reveal was filed. The re-run, 0x7bc70985, opened on time.",
+  "timeline": [
+    {
+      "step": "createExam + addCentre x3",
+      "txs": {
+        "createExam": "0xc500317230b17deba6452290da74fa9be70ca252ce53ffe4345993e6b2893a32",
+        "addCentre:centre-pune-17": "0x578775462b72e68454afad90bfa24181d8aed34e40bc6279789fbfbfdc6ad919",
+        "addCentre:centre-patna-05": "0xb0aef82c43cc8177c55fad067b76125fc9bafed132eb128dacb7abde569de0ed",
+        "addCentre:centre-judges": "0xe5c049451e8dc9f73f16fb4011e9cd3fea8c89773d18aa14cb4a90ef66881f01"
+      }
+    },
+    {
+      "step": "before the bell: open attempt refused, locked 0/3"
+    },
+    {
+      "step": "host laptop asleep 16:15:33-16:31:00 UTC; bell at 16:25:00 missed",
+      "releases": [
+        {
+          "keyper": "test outside keyper (0xcbC4…3bF6)",
+          "round": 328,
+          "tx": "0x01e298c1c34a4a34377217dafedda82a4c42e67280443e7dc20e4d2a3b148f4f",
+          "block": "10503398",
+          "at": "2026-11-21T16:31:06.798Z"
+        },
+        {
+          "keyper": "keyper #2 (0x17aB…5BbA)",
+          "round": 328,
+          "tx": "0x2e93d22e28112b695d6ab94c794a218fbd077bd69fbdab3cb4bf9fc380e03235",
+          "block": "10503401",
+          "at": "2026-11-21T16:31:10.656Z"
+        },
+        {
+          "keyper": "keyper #1 (0x104C…2bc1)",
+          "round": 328,
+          "tx": "0x3b5d4882fc629b46db913f208653d4e2814eb65a4e24397e269861d35a288df5",
+          "block": "10503402",
+          "at": "2026-11-21T16:31:11.900Z"
+        }
+      ]
+    },
+    {
+      "step": "backup round 330 skipped by all three daemons (backup-unused): the exam never switched"
+    }
+  ]
+}
