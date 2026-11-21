@@ -14,15 +14,35 @@ reverted transactions. The daemon gates on the **latest block's timestamp** plus
 margin, checks the gate again on a fresh block right before it derives the seed, and verifies the seed
 against the on-chain `lastHash` locally before sending anything.
 
-## Run a keyper (testnet, about 5 minutes)
+## Become an outside keyper (testnet, about 10 minutes)
+
+A keyper set only means something if its members are independent. If you run one, a real ZeroHour exam
+will depend on your seeds: the board seals every centre's paper partly to your round keys, and your daemon
+opens it at the bell. You never see a paper (each copy is also sealed to its centre), and we never see your
+secrets: you send us only public keys.
 
 ```bash
-cd apps/keyper && npm install
-npx tsx src/cli.ts new        # fresh account -> ~/.zerohour-keyper/account.secret.json
-#   fund the printed qor1… address: https://dashboard.qorechain.io/faucet
-npx tsx src/cli.ts setup      # ML-DSA-87 key, seed chain, ML-DSA-signed register + 1 QOR bond
-npx tsx src/cli.ts run        # daemon: releases every exam round the moment it is due
+git clone https://github.com/Nixon-CSE/zerohour && cd zerohour/apps/keyper
+npm ci --prefix ../../packages/hourglass && npm ci      # Node 20+
+
+npx tsx src/cli.ts new        # 1. fresh account -> ~/.zerohour-keyper/account.secret.json (never share it)
+#                               2. fund the printed qor1… address with ~2 test QOR:
+#                                  https://dashboard.qorechain.io/faucet
+npx tsx src/cli.ts setup      # 3. registers your ML-DSA-87 key, creates a 60-day seed chain on the shared
+                              #    ZeroHour clock, signs the registration and posts the 1 QOR bond
+npx tsx src/cli.ts export-pk --hours 48 --out my-round-keys.json
+#                               4. PUBLIC: your next 48 h of ML-KEM-1024 round keys with Merkle proofs
+npx tsx src/cli.ts run        # 5. leave it running: it releases each exam round the moment it opens
 ```
+
+Then send `my-round-keys.json` and your `0x…` address to the ZeroHour board (open an issue on the repo).
+The board checks every key against **your** `pkRoot` on chain before sealing to it
+(`npm run demo -- exam --outside my-round-keys.json`), so a tampered file is refused.
+Your keyper then appears on the [Keypers page](https://zerohour-exam.vercel.app/keypers/) and in the
+exam's bubbles at the bell.
+
+What you risk: the 1 test-QOR bond, and only if a seed of yours is published before its round. The daemon
+never does that (see the rule above). To leave: `exit`, wait a day, `withdraw`.
 
 | Command | What it does |
 |---|---|

@@ -66,13 +66,15 @@ export default function Keypers() {
       </section>
 
       <section>
-        <h2 id="run">Run a keyper on testnet</h2>
-        <p className="muted">About five minutes. You need Node 20+ and a little test QOR from the faucet.</p>
+        <h2 id="run">Become an outside keyper</h2>
+        <p className="muted">About ten minutes. Node 20+ and about 2 test QOR from the faucet. You never see a paper and we never see your secrets: you send the board only public keys, and it checks each one against your record on chain before sealing to it.</p>
         <pre className="cmd mt-4">{`git clone https://github.com/Nixon-CSE/zerohour && cd zerohour/apps/keyper
-npm install
-npx tsx src/cli.ts new     # fresh account; fund the printed qor1… address
-npx tsx src/cli.ts setup   # ML-DSA-87 key, seed chain, signed register + 1 QOR bond
-npx tsx src/cli.ts run     # release every exam round the moment it is due`}</pre>
+npm ci --prefix ../../packages/hourglass && npm ci
+npx tsx src/cli.ts new        # fresh account; fund the printed qor1… address
+npx tsx src/cli.ts setup      # ML-DSA-87 key, 60-day seed chain on the shared clock, 1 QOR bond
+npx tsx src/cli.ts export-pk --hours 48 --out my-round-keys.json   # public keys + proofs
+npx tsx src/cli.ts run        # release every exam round the moment it is due`}</pre>
+        <p className="mt-4">Then send <code>my-round-keys.json</code> and your address to the board by <a href="https://github.com/Nixon-CSE/zerohour/issues/new?title=Outside%20keyper" target="_blank" rel="noreferrer">opening an issue</a>. Your keyper joins the next exam.</p>
         <p className="small muted mt-4">
           Faucet: <a href="https://dashboard.qorechain.io/faucet" target="_blank" rel="noreferrer">dashboard.qorechain.io/faucet</a>.
           The daemon opens EVM windows scoped to the registry only, checks its local chain against the on-chain record before it starts, and stops if it is ever slashed.
