@@ -91,6 +91,7 @@ const KEYPERS = [
   { id: 1, env: { KEYPER_HOME: "secrets/v2/keyper1-home", KEYPER_ACCOUNT: "secrets/drill.secret.json" } },
   { id: 2, env: { KEYPER_HOME: "secrets/v2/keyper2-home", KEYPER_ACCOUNT: "secrets/keyper2-home/account.secret.json" } },
   { id: 3, env: { KEYPER_HOME: "secrets/v2/keyper3-home", KEYPER_ACCOUNT: "secrets/keyper3-home/account.secret.json" } },
+  { id: 4, env: { KEYPER_HOME: "secrets/v2/keyper4-home", KEYPER_ACCOUNT: "secrets/keyper4-home/account.secret.json" } }, // the bribery run
 ];
 const THRESHOLD = 2;
 
