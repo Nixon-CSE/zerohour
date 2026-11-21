@@ -1,0 +1,71 @@
+{
+  "exam": "ZEROHOUR-BRIBERY-2026-11-21T17:23",
+  "examId": "0x6be0830d95f076da06e0294c2b22d40e86879fe8bbb82c2cccdb1bef970325ae",
+  "chain": "qorechain-diana",
+  "contracts": "v2 (ZeroHourExam 0x3585…49ad, HourglassRegistry 0xAF59…D834)",
+  "unlockA": "2026-11-21T17:40:00.000Z",
+  "story": "The bribery story on the audited v2 contracts. Keyper #4 sold its real round-343 seed 16 minutes before the bell. Alone it opened nothing (locked 1/2). A whistleblower committed and revealed it on chain; the registry checked it against keyper #4's committed chain and slashed it (0.5 QOR to the whistleblower, 0.5 QOR burned, bond 0). Keyper #4's daemon then refused to start. At the bell keypers #1 and #2 opened the exam for all three centres.",
+  "timeline": [
+    {
+      "step": "keyper #4 bonded on v2 (1 QOR)",
+      "txs": {
+        "register": "0xf14b1c6fdc99f1f22883a195a07aa74f74ae9d8e3c2e42cf10944f67e70f32d2"
+      }
+    },
+    {
+      "step": "createExam (keypers #1, #2, #4; threshold 2) + addCentre x3",
+      "txs": {
+        "createExam": "0x6f4c399dc08f28efb09892f1a2ab07f6881109da577f81f5e74120876a056f76",
+        "addCentre:centre-pune-17": "0x134ffe1db72d1ee9ce303ecbad94a1108aaf0c4b8282bb51ede38491df5adfcf",
+        "addCentre:centre-patna-05": "0x7edb6438172648b3629e23acf9bcc185b25b86c35a8c34b0c653505a87b633e6",
+        "addCentre:centre-judges": "0x07b0f39dc2cd5e9e44f2f48115b8c047f34436dbc51008ac313d6cfe3196695f"
+      }
+    },
+    {
+      "step": "17:23:49 UTC: keyper #4 hands its round 343 seed to a briber (off chain); the seed hashes to its on-chain chain head; briber's attempt on a published ciphertext: locked 1/2"
+    },
+    {
+      "step": "whistleblower commitReport + revealReport -> KeyperSlashed",
+      "txs": {
+        "commitReport": "0x93b080a82c0f6670ffb918e932280f854c5ec1b200a32359e66513a8d03a018c",
+        "revealReport": "0xc5ff84e707208048f4f585a7bcfc22cb71895454b1edfdf727e2c4a815576308"
+      }
+    },
+    {
+      "step": "keyper #4 daemon: 'This keyper has been SLASHED' - refuses to run"
+    },
+    {
+      "step": "bell 17:40:00 UTC: keypers #1 and #2 release round 343",
+      "releases": [
+        {
+          "keyper": "keyper #1 (0x104C…2bc1)",
+          "round": 343,
+          "tx": "0x74c1faffbf265879bbf6b1ec9719bd0b492f6b75eba81d038c5fc990f6ffb5f8",
+          "block": "10506308",
+          "at": "2026-11-21T17:40:17.981Z"
+        },
+        {
+          "keyper": "keyper #2 (0x17aB…5BbA)",
+          "round": 343,
+          "tx": "0x108af7e07abeac9162a77feecedf36238dd7cc48b630a3b670d61f8627ae67e4",
+          "block": "10506307",
+          "at": "2026-11-21T17:40:16.561Z"
+        }
+      ]
+    },
+    {
+      "step": "centres decrypt; receipts name the paper hash",
+      "txs": {
+        "recordOpening:centre-pune-17": "0x71e8ca42a66ff619169b8d76a50fc63d9eb859fe2f2552c0d5e204820fef7f3e",
+        "recordOpening:centre-patna-05": "0x0f76c68fd47109d7d324d620d3c86eb157730264c33aab027cd3c31336cae010",
+        "recordOpening:centre-judges": "0x9f468dbf2014fa65c4f73538cb5944e589b48945db3b1ef722dbec4af56c30f6"
+      }
+    },
+    {
+      "step": "fairness reveal",
+      "txs": {
+        "revealFairness": "0xce7bd7387e4a605a4e49411e943afb38f262098eb5e42db38e8c970eef89ee6b"
+      }
+    }
+  ]
+}
