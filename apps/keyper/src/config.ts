@@ -41,7 +41,9 @@ export const contracts = {
 export const tuning = {
   pollMs: Number(env.POLL_MS ?? 5_000),
   safetySeconds: Number(env.SAFETY_SECONDS ?? 2),
-  heartbeatEvery: Number(env.HEARTBEAT_EVERY ?? 0), // rounds; 0 = only release exam rounds
+  // Release the current round once this many are unrevealed, so a release never has to walk a long chain
+  // (a 1,296-step walk ran out of gas on 20 Nov). 288 = one day of 5-minute rounds; 0 = exam rounds only.
+  heartbeatEvery: Number(env.HEARTBEAT_EVERY ?? 288),
   maxFeeGwei: BigInt(env.MAX_FEE_GWEI ?? 500),
   windowBlocks: BigInt(env.WINDOW_BLOCKS ?? 8_000),
   windowTxs: BigInt(env.WINDOW_TXS ?? 20),

@@ -43,6 +43,15 @@ export interface ExamTarget {
 }
 
 /** Scan ExamCreated logs in chunks from `from` to head; keep the exams listing `keyper`. */
+const examAbi = parseAbi([
+  "struct Exam { address board; address leakHunter; uint8 threshold; bool usingBackup; bool revealed; uint32 roundA; uint32 roundB; bytes32 paperCommitA; bytes32 paperCommitB; bytes32 manifestRoot; address[] keypers; }",
+  "function getExam(bytes32) view returns (Exam)",
+]);
+/** Has this exam switched to its backup paper? (One-way on chain, so a true answer never changes.) */
+export async function usingBackup(examId: Hex): Promise<boolean> {
+  return (await pub.readContract({ address: contracts.exam, abi: examAbi, functionName: "getExam", args: [examId] })).usingBackup;
+}
+
 export async function scanExamTargets(keyper: Hex, from: bigint, to: bigint): Promise<ExamTarget[]> {
   const out: ExamTarget[] = [];
   for (let lo = from; lo <= to; lo += tuning.logChunk) {

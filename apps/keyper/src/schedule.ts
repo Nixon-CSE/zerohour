@@ -68,3 +68,19 @@ export function plan(p: PlanInput): Plan {
  * The old 120-per-step formula ran a 1,296-step release out of gas on 20 Nov.
  */
 export const releaseGas = (steps: number) => BigInt(Math.ceil((80_000 + 180 * Math.max(1, steps)) * 1.3));
+
+/**
+ * Backup rounds nobody switched to. Once a set-B round is due and its exam still runs on paper A,
+ * there is no reason to spend a transaction publishing it at that moment. (The seed still becomes
+ * public later, with any later release: that is how a hash chain works. This saves the transaction
+ * and keeps an unused backup from being published at its bell.)
+ */
+export function unusedBackupTargets<T extends { round: number; set: "A" | "B"; examId: string }>(
+  targets: T[],
+  clock: Pick<KeyperClock, "genesis" | "roundSeconds">,
+  chainTime: number,
+  switched: (examId: string) => boolean,
+  safetySeconds = 2,
+): T[] {
+  return targets.filter((t) => t.set === "B" && roundTime({ ...clock, maxRound: 0, nextRound: 0 }, t.round) + safetySeconds <= chainTime && !switched(t.examId));
+}

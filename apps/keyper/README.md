@@ -47,7 +47,7 @@ never does that (see the rule above). To leave: `exit`, wait a day, `withdraw`.
 | Command | What it does |
 |---|---|
 | `status` | account, balance, EVM window, bond, next round and when it unlocks |
-| `run [--heartbeat N] [--dry-run]` | watch `ExamCreated` for exams that list you; release their rounds on time. `--heartbeat N` also posts the current round whenever N rounds are unrevealed |
+| `run [--heartbeat N] [--dry-run]` | watch `ExamCreated` for exams that list you; release their rounds on time. `--heartbeat N` also posts the current round whenever N rounds are unrevealed (default 288, once a day, so no release walks a long chain; `0` = exam rounds only). Backup rounds of exams that never switched are skipped |
 | `release-now [--dry-run]` | one-shot release of the current round |
 
 ## Security properties

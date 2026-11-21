@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { currentRound, plan, releaseGas, roundTime, type KeyperClock } from "../src/schedule.ts";
+import { currentRound, plan, releaseGas, roundTime, unusedBackupTargets, type KeyperClock } from "../src/schedule.ts";
 import { windowProblem } from "../src/native.ts";
 
 const clock: KeyperClock = { genesis: 1_000_000, roundSeconds: 300, maxRound: 100, nextRound: 1 };
@@ -64,4 +64,24 @@ test("window checks: scope, budget, liveness", () => {
   assert.match(windowProblem(w, "0xabc", 900n, 200n)!, /budget/);
   assert.match(windowProblem({ ...w, live: false }, "0xabc", 1n)!, /expired/);
   assert.match(windowProblem({ found: false } as any, "0xabc", 1n)!, /no window/);
+});
+
+test("unused backup rounds are dropped once due; switched exams and paper A are kept", () => {
+  const targets = [
+    { examId: "0xaa", round: 10, set: "A" as const },
+    { examId: "0xaa", round: 12, set: "B" as const }, // never switched -> drop when due
+    { examId: "0xbb", round: 12, set: "B" as const }, // switched -> keep
+    { examId: "0xcc", round: 40, set: "B" as const }, // not due yet -> keep for now
+  ];
+  const switched = (id: string) => id === "0xbb";
+  const dropped = unusedBackupTargets(targets, clock, at(12, 5), switched);
+  assert.deepEqual(dropped.map((t) => `${t.examId}:${t.round}`), ["0xaa:12"]);
+  assert.deepEqual(unusedBackupTargets(targets, clock, at(11, 5), switched), []); // before B's bell nothing is dropped
+});
+
+test("a daily heartbeat bounds every release to a short, cheap walk", () => {
+  const long = { ...clock, maxRound: 17_280 };
+  assert.deepEqual(plan({ clock: long, chainTime: roundTime(long, 288) + 5, targets: [], heartbeatEvery: 288 }), { action: "release", round: 288, reason: "heartbeat", steps: 288 });
+  assert.equal(plan({ clock: long, chainTime: roundTime(long, 287) + 5, targets: [], heartbeatEvery: 288 }).action, "wait");
+  assert.ok(releaseGas(288) < 200_000n);
 });

@@ -17,8 +17,8 @@ import { anchorOf, bytesToHex, hexToBytes, k256, seedAt } from "@zerohour/hourgl
 import type { Hex } from "viem";
 import { contracts, paths, tuning } from "./config.ts";
 import { openWindow, windowProblem, windowStatus } from "./native.ts";
-import { chainTime, fees, keyperRecord, scanExamTargets, sendRelease, type ExamTarget } from "./registry.ts";
-import { plan, releaseGas, roundTime } from "./schedule.ts";
+import { usingBackup, chainTime, fees, keyperRecord, scanExamTargets, sendRelease, type ExamTarget } from "./registry.ts";
+import { plan, releaseGas, roundTime, unusedBackupTargets } from "./schedule.ts";
 
 export interface ChainSecret {
   top: string;
@@ -108,6 +108,18 @@ export async function run(acc: UnifiedAccount, secret: ChainSecret, opts: RunOpt
         state.targets.push(...found);
         state.examCursor = (head.height + 1n).toString();
         saveState(state);
+      }
+
+      // Drop due backup rounds of exams that never switched (no transaction for an unused paper).
+      const dueB = state.targets.filter((t) => t.set === "B" && t.round >= rec.nextRound && roundTime(rec, t.round) + tuning.safetySeconds <= head.time);
+      if (dueB.length) {
+        const switched = new Map(await Promise.all(dueB.map(async (t) => [t.examId, await usingBackup(t.examId)] as const)));
+        const unused = new Set(unusedBackupTargets(dueB, rec, head.time, (id) => switched.get(id as Hex) ?? true, tuning.safetySeconds));
+        if (unused.size) {
+          for (const t of unused) log("backup-unused", { examId: t.examId, round: t.round, note: "exam never switched to paper B; not releasing its round" });
+          state.targets = state.targets.filter((t) => !unused.has(t));
+          if (!opts.dryRun) saveState(state);
+        }
       }
 
       const p = plan({
