@@ -74,7 +74,7 @@ Each run's transactions are in `deployments/demo/<id>/run.json`. Contract addres
 - **Testnet scale.** Bonds are 1 test QOR; two real centres plus a judges' centre; 998 of the 1,000 traced
   centres are simulated.
 
-The full threat table is on the [Security page](https://zerohour-exam.vercel.app/security/).
+The full threat model is in [THREAT_MODEL.md](THREAT_MODEL.md) and on the [Security page](https://zerohour-exam.vercel.app/security/).
 On 20 Nov we audited our own code, proved four contract flaws with tests, and redeployed as v2
 ([AI_USAGE.md](AI_USAGE.md#the-self-audit-20-nov)).
 
