@@ -138,7 +138,7 @@ function Fairness({ v }: { v: ExamView }) {
 function Exam({ id }: { id: Hex }) {
   const s = useAsync(() => loadExam(id), [id]);
   const now = useChainNow();
-  if (s.error) return <p className="err">Could not load exam {id}: {s.error}</p>;
+  if (s.error) return <p className="err">Could not read exam {id.slice(0, 10)} from QoreChain testnet ({s.error}). The testnet RPC may be down; reload in a minute.</p>;
   const v = s.data;
   if (!v) return <p className="pending">Reading exam {id.slice(0, 10)} from QoreChain…</p>;
   const round = v.activeRound;

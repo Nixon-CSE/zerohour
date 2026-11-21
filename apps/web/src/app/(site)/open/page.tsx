@@ -159,7 +159,7 @@ function Inner() {
   const ok = id && /^0x[0-9a-fA-F]{64}$/.test(id) && centre && /^0x[0-9a-fA-F]{40}$/.test(centre);
   const s = useAsync(async () => (ok ? loadExam(id as Hex) : null), [id]);
   if (!ok) return <p>Open a centre from its <Link href="/">exam page</Link>.</p>;
-  if (s.error) return <p className="err">Could not load the exam: {s.error}</p>;
+  if (s.error) return <p className="err">Could not read this exam from QoreChain testnet ({s.error}). The testnet RPC may be down; reload in a minute.</p>;
   if (!s.data) return <p className="pending">Reading the exam from QoreChain…</p>;
   return <Console v={s.data} centre={centre as Hex} />;
 }

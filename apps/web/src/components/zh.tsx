@@ -25,13 +25,19 @@ export function useMounted() {
 /* -------- chain clock: unlocks are judged by block time, so the page shows block time -------- */
 type Clock = { block: bigint; chainTime: number; offset: number; seenAt: number } | null;
 let clock: Clock = null;
+let failures = 0; // consecutive failed polls
+let snap: { clock: Clock; failures: number } = { clock, failures }; // replaced on every poll so subscribers re-render
 const subs = new Set<() => void>();
 let timer: ReturnType<typeof setInterval> | null = null;
 async function poll() {
   try {
     const h = await chainHead();
     clock = { block: h.number, chainTime: h.time, offset: h.time - Date.now() / 1000, seenAt: Date.now() };
-  } catch { /* keep the last head; the header marks it stale */ }
+    failures = 0;
+  } catch {
+    failures++; // keep the last head; the header says the RPC is unreachable
+  }
+  snap = { clock, failures };
   subs.forEach((f) => f());
 }
 function subscribe(f: () => void) {
@@ -39,7 +45,8 @@ function subscribe(f: () => void) {
   if (!timer) { poll(); timer = setInterval(poll, 4000); }
   return () => { subs.delete(f); if (!subs.size && timer) { clearInterval(timer); timer = null; } };
 }
-export const useHead = () => useSyncExternalStore(subscribe, () => clock, () => null);
+const useChain = () => useSyncExternalStore(subscribe, () => snap, () => snap);
+export const useHead = () => useChain().clock;
 
 /** Seconds on the chain's clock, ticking locally between polls. */
 export function useChainNow() {
@@ -50,12 +57,14 @@ export function useChainNow() {
 }
 
 export function HeadTick() {
-  const head = useHead();
+  const { clock: head, failures } = useChain();
   const stale = !head || Date.now() - head.seenAt > 15000;
   return (
     <span className="head-tick" aria-live="off">
       <span className={`dot ${stale ? "stale" : ""}`} aria-hidden />
-      {head ? (<>QoreChain testnet block <b>{head.block.toLocaleString()}</b></>) : "connecting to QoreChain testnet"}
+      {failures >= 2 && stale
+        ? <span className="err">QoreChain testnet RPC unreachable{head ? ` since block ${head.block.toLocaleString()}` : ""}, retrying</span>
+        : head ? (<>QoreChain testnet block <b>{head.block.toLocaleString()}</b></>) : "connecting to QoreChain testnet"}
     </span>
   );
 }

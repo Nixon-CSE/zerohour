@@ -59,6 +59,9 @@ Contracts referred to are the audited **v2** ones (`deployments/testnet.json`).
    seed), never the account's recovery phrase, and refuses a pasted phrase; the key cannot sign or move funds.
    A real centre would keep it on a hardware device.
 7. **Leak tracing is closed-world.** The posterior ranks the candidate set; 998 of the 1,000 traced centres are simulated. A leaker who re-orders questions evades attribution (but cannot frame another centre).
+8. **One browser-usable RPC.** QoreChain testnet publishes one EVM HTTP endpoint; its WebSocket endpoint refuses
+   browser user agents (checked 21 Nov). If the endpoint is down the site says so and retries; the keyper daemons
+   (server clients) are unaffected. Every check can still be re-run from the repo against any node.
 
 ## 5. Audit log
 

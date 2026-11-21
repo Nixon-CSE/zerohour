@@ -28,7 +28,14 @@ export const deploymentOf = (exam: string) => DEPLOYMENTS.find((d) => d.exam.toL
 // explore.qore.network serves /tx/<hash> and /address/<addr>; switch its network selector to Testnet.
 export const EXPLORER = "https://explore.qore.network";
 
-export const client = createPublicClient({ chain: qorechain, transport: http(undefined, { batch: true, retryCount: 3 }) });
+/**
+ * QoreChain testnet has exactly one EVM endpoint a browser can use. (Its WebSocket endpoint,
+ * wss://evm-ws-testnet.qore.host, answers server clients but refuses browser user agents with 403,
+ * checked 21 Nov 2026, so it cannot serve as a fallback here.) Requests are batched and retried, and
+ * the header says plainly when the endpoint is unreachable.
+ */
+export const RPC_HTTP = "https://evm-testnet.qore.host";
+export const client = createPublicClient({ chain: qorechain, transport: http(RPC_HTTP, { batch: true, retryCount: 3, timeout: 15_000 }) });
 
 export const examAbi = parseAbi([
   "struct Exam { address board; address leakHunter; uint8 threshold; bool usingBackup; bool revealed; uint32 roundA; uint32 roundB; bytes32 paperCommitA; bytes32 paperCommitB; bytes32 manifestRoot; address[] keypers; }",
