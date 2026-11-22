@@ -19,12 +19,13 @@ const THREATS: [string, string, "live" | "next"][] = [
   ["The RPC operator sees a seed in an eth_call", "Keyper daemons never let a seed leave the machine before chain time passes the round, not even for gas estimation.", "live"],
   ["A keyper's ECDSA key is stolen", "Its EVM window is scoped to the Hourglass registry and needs an ML-DSA-87 signature to open. We hand our drill key to the attacker bot on purpose.", "live"],
   ["The exam board itself leaks the paper", "The board writes the paper, so ZeroHour cannot hide it from the board. A leaked master copy is caught and swapped for the backup (row above), and the fairness reveal proves no centre got a different paper. Splitting authorship across setters, so no one person holds a whole paper, is next.", "next"],
+  ["The exam board leaks a centre's copy to frame that centre", "Until the fairness reveal the board holds every centre's question order, so it could produce any centre's copy. A leak in a centre's order therefore points at that centre or the board; the Leak Hunter reports the match, not the motive, and filing is the operator's decision. Multi-setter sealing would remove this.", "next"],
 ];
 
 const REAL: [string, "live" | "next"][] = [
   ["HourglassRegistry and ZeroHourExam on QoreChain testnet", "live"],
   ["Three bonded keypers with ML-KEM-1024 round keys and daemons", "live"],
-  ["Two centres with on-chain KEM keys and signed recipient cards", "live"],
+  ["Three centres (two demo centres and the public judges' centre) with on-chain KEM keys and signed recipient cards", "live"],
   ["In-browser opening with ciphertext, seed and anchor checks", "live"],
   ["Leak tracing against 1,000 variants (2 real centres, 998 simulated) and signed on-chain reports", "live"],
   ["Public fairness reveal, recomputed in the browser and checked against each centre's signed receipt", "live"],

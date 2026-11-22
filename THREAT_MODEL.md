@@ -47,6 +47,7 @@ Contracts referred to are the audited **v2** ones (`deployments/testnet.json`).
 | T17 | Prompt injection in a leaked photo steers the Leak Hunter | The model only transcribes; it never sees centres or variants. Matching, tracing and the filing rule are code; framing a centre needs its secret order | `hunter.ts` | Live |
 | T19 | A centre operator exposes the account while opening the paper | The console accepts only the centre's decryption key (QoreSeal seed, HKDF-derived and one-way); pasted recovery phrases are refused | `apps/web/src/app/(site)/open/page.tsx`, `npm run demo -- decryption-key` | Live |
 | T18 | The exam board leaks the paper itself | Not prevented: the board writes it. Detected if the leak is in the master order (T7); unequal papers are caught by T9 | — | Next: multi-setter sealing |
+| T20 | The exam board renders a centre's copy and leaks it to frame that centre | Not prevented: until the fairness reveal the board holds every centre's permutation seed, so it can produce any centre's order. A leak in a centre's order therefore points at that centre **or** the board. The Leak Hunter states the match, never the motive, and filing a report is the operator's decision | — | Next: multi-setter sealing, where no single party holds all the orders |
 
 ## 4. Residual risks we accept today
 
@@ -61,7 +62,7 @@ Contracts referred to are the audited **v2** ones (`deployments/testnet.json`).
 6. **A centre's decryption key is a file on a computer.** The console takes only that key (the 32-byte QoreSeal
    seed), never the account's recovery phrase, and refuses a pasted phrase; the key cannot sign or move funds.
    A real centre would keep it on a hardware device.
-7. **Leak tracing is closed-world.** The posterior ranks the candidate set; 998 of the 1,000 traced centres are simulated. A leaker who re-orders questions evades attribution (but cannot frame another centre).
+7. **Leak tracing is closed-world.** The posterior ranks the candidate set; 998 of the 1,000 traced centres are simulated. A leaker who re-orders questions evades attribution. Only someone holding the permutation seeds before the reveal (the board) could produce another centre's order, so a match names that centre or the board (T20).
 8. **One browser-usable RPC.** QoreChain testnet publishes one EVM HTTP endpoint; its WebSocket endpoint refuses
    browser user agents (checked 21 Nov). If the endpoint is down the site says so and retries; the keyper daemons
    (server clients) are unaffected. Every check can still be re-run from the repo against any node.
