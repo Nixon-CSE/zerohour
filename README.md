@@ -64,6 +64,18 @@ Details: [`apps/demo/README.md`](apps/demo/README.md).
 
 Each run's transactions are in `deployments/demo/<id>/run.json`. Contract addresses: [`deployments/testnet.json`](deployments/testnet.json).
 
+### Testnet addresses (qorechain-diana, EVM chain id 9800)
+
+| Role | Address |
+|---|---|
+| HourglassRegistry v2 (keyper bonds, seeds, slashing) | `0xAF59A5e81c0F5D85ec79f3fE6F33Bd8A923fD834` |
+| ZeroHourExam v2 (exams, centres, receipts, fairness) | `0x358545bc6d0321705f8944e32560681e788949ad` |
+| Exam board (deployed both; no owner on either contract) | `0xe1FD768beFA0516Ef3dBf7bFc80aAC471298F9dA` / `qor1u87hdzl05pgkau7m77lusz4vguff37w66an0x4` |
+| Keyper #1, also the Q-Day Drill account | `0x104C6d4f856f0e3CbC5c92474BF18AE19b882bc1` / `qor1zpxx6nu9du8re0zujfr5huv2uxdcs27pw5lyv8` |
+| Judges' centre (its key is public on purpose) | `0x42cAa5806f04b7AE51CFd4A0afB4dC08aeA0a303` |
+
+v1 contracts (`0x5CF8…f1AA`, `0x3494…c250`) stay readable with the first runs; why they were replaced is in `deployments/testnet.json`.
+
 ## What it does not protect against
 
 - **The exam board.** It writes the paper, so it can read it. ZeroHour removes the paper from everyone after the
@@ -82,7 +94,8 @@ On 20 Nov we audited our own code, proved four contract flaws with tests, and re
 ## Verify and run
 
 ```bash
-cd contracts && forge test                 # 31 tests, incl. fuzzing and the audit regressions
+cd contracts && forge install foundry-rs/forge-std@v1.17.0 --no-git   # once: lib/ is not committed
+forge test                                 # 31 tests, incl. fuzzing and the audit regressions
 cd packages/hourglass && npm i && npm test # 11
 cd apps/keyper && npm i && npm test        # 11
 cd apps/demo && npm i && npm test          # 8 Leak Hunter tests, no API key needed

@@ -46,7 +46,7 @@ The same loop ran for every part of the build:
 
 | Phase | What the agent generated | Evidence |
 |---|---|---|
-| Contracts | `HourglassRegistry` (bonded keypers, hash-chain seeds, commit-reveal slashing) and `ZeroHourExam` (threshold unlock, per-centre ciphertexts, backup switch, signed receipts, leak reports, fairness reveal); keyper registration and every board, centre and Leak Hunter action is authorised by ML-DSA-87 via the `pqcVerify` precompile | `7ec0470`, `374c12a`, 24 Foundry tests including fuzzing and front-running |
+| Contracts | `HourglassRegistry` (bonded keypers, hash-chain seeds, commit-reveal slashing) and `ZeroHourExam` (threshold unlock, per-centre ciphertexts, backup switch, signed receipts, leak reports, fairness reveal); keyper registration and every board, centre and Leak Hunter action is authorised by ML-DSA-87 via the `pqcVerify` precompile | `7ec0470`, `374c12a`, 24 Foundry tests including fuzzing and front-running (31 after the v2 audit) |
 | Crypto library | Seed chains, ML-KEM-1024 round keys with Merkle commitments, two-lock sealing (Shamir 2-of-3 + QoreSeal), per-centre variants, leak tracing | `9eb9979`–`210356f`, 10 tests |
 | Keyper daemon | A release scheduler that gates on block time (never the local clock), registry-scoped EVM windows, a CLI | `28d319d`–`02d377e`, 8 tests |
 | End-to-end run | Board, Leak Hunter, two centres and three keypers on testnet; exam `0xe54bb5d0` sealed, opened at the bell, traced and revealed | `863d72e`, `deployments/demo/0xe54bb5d0/run.json` |
@@ -160,10 +160,10 @@ re-hashes the evidence in your browser.
 
 ```bash
 git log --format='%h %ad %an %s' --date=iso             # every commit, all by the human
-cd contracts && forge test                               # 31 tests
-cd packages/hourglass && npm test                        # 10 tests
-cd apps/keyper && npm test                               # 9 tests
-cd apps/demo && npm test                                 # 8 Leak Hunter tests, no API key needed
+cd contracts && forge install foundry-rs/forge-std@v1.17.0 --no-git && forge test   # 31 tests
+cd packages/hourglass && npm i && npm test               # 11 tests
+cd apps/keyper && npm i && npm test                      # 11 tests
+cd apps/demo && npm i && npm test                        # 8 Leak Hunter tests, no API key needed
 cd apps/demo && npm run demo -- hunt <photo> --reader claude-code   # the Leak Hunter on your own photo
 ```
 
