@@ -32,7 +32,13 @@ export function createAccountFile(): Promise<UnifiedAccount> {
   });
 }
 
+/**
+ * The keyper account. On a host with no secret files (a container), KEYPER_MNEMONIC supplies it from the
+ * environment instead, so the phrase never sits in an image or on a volume.
+ */
 export function loadAccount(): Promise<UnifiedAccount> {
+  const fromEnv = process.env.KEYPER_MNEMONIC?.trim();
+  if (fromEnv) return deriveUnifiedAccount(fromEnv, 0);
   if (!existsSync(paths.account)) throw new Error(`no account at ${paths.account} — run: zerohour-keyper new`);
   return deriveUnifiedAccount(JSON.parse(readFileSync(paths.account, "utf8")).mnemonic, 0);
 }

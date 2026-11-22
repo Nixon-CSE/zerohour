@@ -32,9 +32,15 @@ const opt = (args: string[], name: string) => {
   return i >= 0 ? args[i + 1] : undefined;
 };
 
+/** The seed chain: $KEYPER_CHAIN_SECRET (JSON, for containers) or the chain.secret.json file. */
 function loadSecret(): ChainSecret {
-  if (!existsSync(paths.chain)) throw new Error(`no seed chain at ${paths.chain} — run: zerohour-keyper setup`);
-  return JSON.parse(readFileSync(paths.chain, "utf8"));
+  const fromEnv = process.env.KEYPER_CHAIN_SECRET?.trim();
+  const s = fromEnv ? JSON.parse(fromEnv) : existsSync(paths.chain) ? JSON.parse(readFileSync(paths.chain, "utf8")) : null;
+  if (!s) throw new Error(`no seed chain at ${paths.chain} — run: zerohour-keyper setup`);
+  if (!/^0x[0-9a-fA-F]{64}$/.test(s.top) || ![s.maxRound, s.genesis, s.roundSeconds].every(Number.isInteger)) {
+    throw new Error("seed chain secret must be {top: 0x…32 bytes, maxRound, genesis, roundSeconds}");
+  }
+  return s;
 }
 
 /** keccak256(pk_r) for every round — public; cached in $KEYPER_HOME so proofs are instant. */
