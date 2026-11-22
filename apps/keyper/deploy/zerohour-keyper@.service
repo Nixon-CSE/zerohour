@@ -1,0 +1,33 @@
+# One always-on Hourglass keyper per instance: zerohour-keyper@1, @2, @3 …
+# Secrets come from /etc/zerohour/keyper-<n>.env (KEYPER_MNEMONIC, KEYPER_CHAIN_SECRET; root-owned, 0600).
+# State and the release log go to /var/lib/zerohour/keyper-<n> (public data only).
+[Unit]
+Description=ZeroHour Hourglass keyper %i
+After=network-online.target
+Wants=network-online.target
+# At most 3 restarts an hour: a release that keeps failing (exit 3) must not burn gas in a loop.
+StartLimitIntervalSec=3600
+StartLimitBurst=3
+
+[Service]
+Type=simple
+User=zerohour
+WorkingDirectory=/opt/zerohour/apps/keyper
+Environment=KEYPER_HOME=/var/lib/zerohour/keyper-%i
+EnvironmentFile=/etc/zerohour/keyper-%i.env
+ExecStart=/usr/bin/node /opt/zerohour/apps/keyper/node_modules/tsx/dist/cli.mjs src/cli.ts run
+# Exit 3 = gave up on a release (restart, capped above); exit 2 = slashed (never restart).
+Restart=on-failure
+RestartSec=10
+RestartPreventExitStatus=2
+StateDirectory=zerohour/keyper-%i
+# Hardening: the daemon only needs the network and its own state directory.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/zerohour
+MemoryMax=400M
+
+[Install]
+WantedBy=multi-user.target
