@@ -1,0 +1,12 @@
+# Never send these to a container build.
+secrets/
+**/*.secret.json
+**/.env
+**/.env.*
+**/node_modules/
+.git/
+contracts/out/
+contracts/cache/
+contracts/lib/
+apps/web/.next/
+apps/web/out/
