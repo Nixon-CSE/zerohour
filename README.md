@@ -57,8 +57,8 @@ Details: [`apps/demo/README.md`](apps/demo/README.md).
 | Exam | What it shows |
 |---|---|
 | [Demo, 15 Nov](https://zerohour-exam.vercel.app/exam/?id=0xe54bb5d08c756ff06bdeb69145566653781d71644beecc8c0c47e3abd6b2b1ed) | The full cycle. Later, a **real iPhone photo** of a leaked page was traced to Pune-17 at posterior 1.0 out of 1,000 centres, and the signed report filed on chain. |
-| [Bribery, 16 Nov](https://zerohour-exam.vercel.app/exam/?id=0x2db24058ffccbd8251cc5cf93396a5d0c4c9dd0a8b6a2379bdfc7b064399c716) | A keyper sold its seed 15 min early. One seed opened nothing; a whistleblower proved it on chain and the keyper's bond was **slashed**. The exam opened on time. |
-| [Backup, 20 Nov](https://zerohour-exam.vercel.app/exam/?id=0x4c518322756d385729bea2e801f332b1b2aba2a7e100d7bc65f71585faae889a) | A page of paper A leaked **before** its bell in the setters' own order. The Leak Hunter accused no centre; the board moved every centre to backup paper B in one signed transaction; B opened at its own bell. |
+| [Bribery, 21 Nov (v2)](https://zerohour-exam.vercel.app/exam/?id=0x6be0830d95f076da06e0294c2b22d40e86879fe8bbb82c2cccdb1bef970325ae) | A keyper sold its seed 16 min early. One seed opened nothing (locked 1/2); a whistleblower proved it on chain and the keyper's bond was **slashed** (half to the whistleblower, half burned). Its daemon then refused to run, and the exam opened on time without it. First run on v1: [16 Nov](https://zerohour-exam.vercel.app/exam/?id=0x2db24058ffccbd8251cc5cf93396a5d0c4c9dd0a8b6a2379bdfc7b064399c716). |
+| [Backup, 21 Nov (v2)](https://zerohour-exam.vercel.app/exam/?id=0x4da31f8134603dfccaaa4fa59a19c4d7f501a47acfd20f407260e476803ed94f) | A page of paper A leaked **before** its bell in the setters' own order. The Leak Hunter accused no centre; the board moved every centre to backup paper B in one signed transaction, 14 min before A's bell; B opened at its own bell for all three centres. First run on v1: [20 Nov](https://zerohour-exam.vercel.app/exam/?id=0x4c518322756d385729bea2e801f332b1b2aba2a7e100d7bc65f71585faae889a). |
 | [Public, 20 Nov](https://zerohour-exam.vercel.app/exam/?id=0x53cf9dc20c56b3abec5f0763981dab01f541fdb78cff5bc650c0c9d80e8670b0) | First exam on the audited **v2** contracts, with the judges' centre. Every receipt matches the reveal. |
 | [Outside keyper, 21 Nov](https://zerohour-exam.vercel.app/exam/?id=0x7bc70985a00c7ee5e22f067b1bec43162eeb73f6c16be0afa3eaf6542790658b) | 3 of 3, and the third keyper only ever sent the board its **public** round keys with Merkle proofs, each checked against its on-chain root. All three released 7-11 s after the bell. That keyper is a test account we run ourselves; no other team has joined yet. An [earlier attempt](https://zerohour-exam.vercel.app/exam/?id=0x74c361d34ccfddf0f48a4a810c27eaf5ebf10a98658c851b5fe5a84b30bfcfd5) released 6 min late because the one laptop running all three keypers fell asleep: the lock held, but liveness needs keypers on independent machines. |
 
@@ -83,8 +83,8 @@ On 20 Nov we audited our own code, proved four contract flaws with tests, and re
 
 ```bash
 cd contracts && forge test                 # 31 tests, incl. fuzzing and the audit regressions
-cd packages/hourglass && npm i && npm test # 10
-cd apps/keyper && npm i && npm test        # 9
+cd packages/hourglass && npm i && npm test # 11
+cd apps/keyper && npm i && npm test        # 11
 cd apps/demo && npm i && npm test          # 8 Leak Hunter tests, no API key needed
 cd apps/web && npm i && npm run dev        # the site against live testnet
 ```
@@ -96,6 +96,24 @@ Run your own keyper on testnet in about five minutes: [`apps/keyper/README.md`](
 The drill account handed its ECDSA key to the organisers' attacker bot on 18 Nov. Nothing was taken:
 every action that matters needs its ML-DSA-87 key, and its EVM windows are scoped to the registry.
 That account still runs keyper #1.
+
+## Credits
+
+Everything in this repository was written during the fest (from 4 Nov 2026). It builds on these open-source
+libraries, kits and templates:
+
+- **QoreChain:** `@qorechain/sdk`, `@qorechain/evm`, `@qorechain/pqc` (ML-DSA-87, ML-KEM-1024) and
+  `@qorechain/qoreseal`. The EVM-window helper follows the pattern of the `create-qorechain-dapp` Foundry
+  template's `scripts/window.ts`. The `pqcVerify` and `pqcKeyStatus` precompiles are QoreChain's.
+- **Contracts:** [Foundry](https://github.com/foundry-rs/foundry) and `forge-std`.
+- **Crypto and chain clients:** [`shamir-secret-sharing`](https://github.com/privy-io/shamir-secret-sharing),
+  [viem](https://viem.sh), [CosmJS](https://github.com/cosmos/cosmjs) (`@cosmjs/stargate`).
+- **Website:** [Next.js](https://nextjs.org), React, Tailwind CSS, [shadcn/ui](https://ui.shadcn.com) on
+  Radix UI, lucide-react, three.js with React Three Fiber and drei.
+- **Leak Hunter:** Claude (Anthropic) reads the photo through Claude Code or `@anthropic-ai/sdk`; `zod` for the
+  output schema.
+
+The exam papers in `apps/demo/papers` are original mock questions written for this demo.
 
 ## How it was built
 
