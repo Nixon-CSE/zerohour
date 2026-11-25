@@ -10,7 +10,7 @@
  * Nothing is sent to any server. The always-on keypers release every beacon round (every 15 minutes).
  */
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { sealKeysFromSeed, verifyRecipientCard, type RecipientCard } from "@qorechain/qoreseal";
 import { bytesToHex, hexToBytes, k256, openPaper, pkLeaf, sealPaper, verifyMerkle, type SealedPaper } from "@zerohour/hourglass";
 import { decodeAbiParameters, encodeFunctionData, parseAbi, type Hex } from "viem";
@@ -60,7 +60,7 @@ function KeyperHealth({ idx, recs, now }: { idx: BeaconIndex; recs: KeyperRecord
       const last = r.nextRound > 0 ? r.genesis + (r.nextRound - 1) * r.roundSeconds : 0;
       const beacon = last > 0 && now - last <= 2 * cadence + 120; // releasing every cadence
       const alive = last > 0 && now - last <= 26 * 3600; // at least the daily heartbeat
-      return { label: `K${idx.keypers[i].id}`, on: alive, bad: r.slashed, note: r.slashed ? "slashed" : last ? `${beacon ? "beacon" : "daily"} · last release ${ago(now - last)}` : "never released" };
+      return { label: `K${idx.keypers[i].id}`, on: alive, bad: r.slashed, note: r.slashed ? "slashed" : last ? `${beacon ? "beacon" : "daily"} · ${ago(now - last)} ago` : "never released" };
     })} />
   );
 }
@@ -123,25 +123,29 @@ function SealPanel({ idx, recs, now, onSealed }: { idx: BeaconIndex; recs: Keype
   };
 
   return (
-    <section className="lock" style={{ marginTop: 24 }}>
-      <h3>1. Seal a message to a bell</h3>
+    <section className="card" aria-labelledby="seal-h">
+      <h3 id="seal-h">1. Seal a message to a bell</h3>
       {files.loading || recipient.loading ? <p className="pending">Loading the keypers&apos; published round keys…</p> : !bells.length ? (
         <p className="err">No published bell ahead in the key files. The beacon schedule may have ended.</p>
       ) : (
         <>
-          <label htmlFor="bell">Bell</label>
-          <select id="bell" value={bell?.round} onChange={(e) => setPick(Number(e.target.value))} style={{ display: "block", margin: "4px 0 12px" }}>
-            {bells.map((b) => <option key={b.round} value={b.round}>{utc(Date.parse(b.at) / 1000)} (round {b.round}, in {span(Date.parse(b.at) / 1000 - now)})</option>)}
-          </select>
-          <p className="small muted">To: <b>{recipient.data?.label}</b>. Its decryption key is public on purpose, so you can open the message yourself after the bell. Before the bell nobody can: not us, not the recipient, not a keyper alone.</p>
-          <label htmlFor="msg">Message</label>
-          <textarea id="msg" value={text} maxLength={MAX_CHARS} onChange={(e) => setText(e.target.value)} placeholder="Write something only the future should read." />
-          <p className="small muted">{text.length}/{MAX_CHARS}</p>
-          <Button size="xl" onClick={seal} disabled={busy || !text.trim() || !bell}>{busy ? "Sealing…" : `Seal to ${bell ? utc(Date.parse(bell.at) / 1000) : "the bell"}`}</Button>
+          <div className="field">
+            <label htmlFor="bell">Bell</label>
+            <select id="bell" value={bell?.round} onChange={(e) => setPick(Number(e.target.value))}>
+              {bells.map((b) => <option key={b.round} value={b.round}>{utc(Date.parse(b.at) / 1000)} · in {span(Date.parse(b.at) / 1000 - now)}</option>)}
+            </select>
+            <p className="small muted" style={{ margin: 0 }}>Round {bell?.round}. To <b>{recipient.data?.label}</b>, whose decryption key is public on purpose so you can open it yourself after the bell. Before the bell nobody can: not us, not the recipient, not a keyper alone.</p>
+          </div>
+          <div className="field">
+            <label htmlFor="msg">Message</label>
+            <textarea id="msg" className="msg" value={text} maxLength={MAX_CHARS} onChange={(e) => setText(e.target.value)} placeholder="Write something only the future should read." />
+            <p className="small muted" style={{ margin: 0, maxWidth: "none", textAlign: "right" }} aria-live="polite">{text.length} / {MAX_CHARS}</p>
+          </div>
+          <div><Button size="xl" onClick={seal} disabled={busy || !text.trim() || !bell}>{busy ? "Sealing…" : `Seal to ${bell ? utc(Date.parse(bell.at) / 1000) : "the bell"}`}</Button></div>
         </>
       )}
-      {checks.length > 0 && <ul className="small" style={{ listStyle: "none", padding: 0, marginTop: 12 }}>{checks.map((c, i) => <li key={i}><Verdict ok={c.ok} yes={c.text} no={c.text} /></li>)}</ul>}
-      {err && <p className="err" role="alert" style={{ marginTop: 8 }}>{err}</p>}
+      {checks.length > 0 && <ul className="checklist" aria-label="What was checked">{checks.map((c, i) => <li key={i}><Verdict ok={c.ok} yes={c.text} no={c.text} /></li>)}</ul>}
+      {err && <p className="err" role="alert" style={{ margin: 0 }}>{err}</p>}
     </section>
   );
 }
@@ -149,21 +153,26 @@ function SealPanel({ idx, recs, now, onSealed }: { idx: BeaconIndex; recs: Keype
 function CapsuleCard({ c, now, onRemove }: { c: Capsule; now: number; onRemove: () => void }) {
   const bellAt = Date.parse(c.at) / 1000;
   const before = now < bellAt;
-  // Released seeds for the bell round, checked against each keyper's anchor (chainSeed throws otherwise).
+  // Released seeds for the bell round, checked against each keyper's anchor (chainSeed throws otherwise). Once the
+  // threshold is in, the seeds can never change, so they are kept and the chain is not asked again.
+  const settled = useRef<Record<string, Uint8Array> | null>(null);
   const seeds = useAsync(async () => {
     if (before) return {} as Record<string, Uint8Array>;
+    if (settled.current) return settled.current;
     const out: Record<string, Uint8Array> = {};
     for (const k of c.keypers) {
       const s = await chainSeed(await keyperRecord(k, c.registry), c.round);
       if (s) out[k] = s;
     }
+    if (Object.keys(out).length >= c.threshold) settled.current = out;
     return out;
-  }, [c.round, before ? 0 : Math.floor(now / 15)]);
+  }, [c.round, before ? 0 : settled.current ? "settled" : Math.floor(now / 15)]);
   const have = Object.keys(seeds.data ?? {}).length;
   const judge = useAsync(() => publicFile<{ decryptionKey: string }>("demo", "judge-centre.json"), []);
   const [key, setKey] = useState("");
   const [out, setOut] = useState<{ text?: string; ms?: number; err?: string }>({});
   const [link, setLink] = useState("");
+  const keyId = `capsule-key-${c.sealed.ct.slice(2, 14)}`; // unique even for two capsules sealed to the same bell
 
   const open = async () => {
     setOut({});
@@ -186,32 +195,38 @@ function CapsuleCard({ c, now, onRemove }: { c: Capsule; now: number; onRemove: 
   };
 
   return (
-    <div className="lock" style={{ marginTop: 16 }}>
-      <h3>Sealed to {utc(bellAt)} <span className="small muted">(round {c.round})</span></h3>
-      <p className="small muted">For {c.recipient.label}. Ciphertext hash <Hash v={bytesToHex(k256(new TextEncoder().encode(JSON.stringify(c.sealed))))} n={8} />.</p>
-      <div className={`state ${have >= c.threshold ? "free" : "shut"}`}>
-        {before ? `Locked: the bell is in ${span(bellAt - now)}` : have >= c.threshold ? `Bell passed: ${have} of ${c.keypers.length} keyper seeds are on chain and check out against their anchors` : `Bell passed, waiting for keypers: ${have} of ${c.threshold} seeds on chain`}
+    <article className="card" aria-label={`Message sealed to ${utc(bellAt)}`}>
+      <header>
+        <div>
+          <h3>Sealed to {utc(bellAt)}</h3>
+          <p className="small muted" style={{ margin: 0 }}>Round {c.round} · for {c.recipient.label} · ciphertext <Hash v={bytesToHex(k256(new TextEncoder().encode(JSON.stringify(c.sealed))))} n={6} /></p>
+        </div>
+      </header>
+      <div className={`state ${have >= c.threshold ? "free" : "shut"}`} style={{ fontWeight: 700 }} role="status">
+        {before ? `Locked: the bell is in ${span(bellAt - now)}` : seeds.error && have < c.threshold ? "Bell passed. Could not read the keypers' seeds from QoreChain just now (RPC busy); retrying every 15 seconds." : seeds.loading && !seeds.data ? "Bell passed. Reading the keypers' seeds from QoreChain…" : have >= c.threshold ? `Bell passed: ${have} of ${c.keypers.length} keyper seeds are on chain and check out against their anchors` : `Bell passed, waiting for keypers: ${have} of ${c.threshold} seeds on chain`}
       </div>
       <Bubbles items={c.keypers.map((k, i) => ({ label: `K${i + 1}`, on: !!seeds.data?.[k], note: seeds.data?.[k] ? bytesToHex(seeds.data[k]).slice(0, 8) + "…" : "sealed" }))} />
-      <label htmlFor={`k${c.round}`}>Recipient decryption key</label>
-      {judge.data?.decryptionKey && c.recipient.name === "centre-judges" && <p className="small" style={{ margin: "4px 0 8px" }}><button type="button" className="underline font-semibold" onClick={() => setKey(judge.data!.decryptionKey)}>Use the judges&apos; key</button> (public on purpose)</p>}
-      <textarea id={`k${c.round}`} value={key} onChange={(e) => setKey(e.target.value)} spellCheck={false} autoComplete="off" placeholder="zerohour-centre-key:…" />
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+      <div className="field" style={{ margin: 0 }}>
+        <label htmlFor={keyId}>Recipient decryption key</label>
+        {judge.data?.decryptionKey && c.recipient.name === "centre-judges" && <p className="small" style={{ margin: 0 }}><button type="button" className="underline font-semibold" onClick={() => setKey(judge.data!.decryptionKey)}>Use the judges&apos; key</button> (public on purpose)</p>}
+        <textarea id={keyId} value={key} onChange={(e) => setKey(e.target.value)} spellCheck={false} autoComplete="off" placeholder="zerohour-centre-key:…" />
+      </div>
+      <div className="actions" style={{ marginTop: 0 }}>
         <Button onClick={open} disabled={!key.trim() || have < c.threshold}>{have >= c.threshold ? "Open" : before ? "Opens at the bell" : "Waiting for seeds"}</Button>
         <Button variant="outline" onClick={() => { void open(); }} disabled={!key.trim() || have >= c.threshold}>Try to open now</Button>
         <Button variant="outline" onClick={download}>Download</Button>
         <Button variant="outline" onClick={async () => { const l = await toLink(c); setLink(l); try { await navigator.clipboard.writeText(l); } catch { /* shown below */ } }}>Copy link</Button>
         <Button variant="ghost" onClick={onRemove}>Remove</Button>
       </div>
-      {link && <p className="small muted" style={{ wordBreak: "break-all" }}>Link copied. Anyone with it sees the same lock: <a href={link}>open link</a></p>}
-      {out.err && <p className="err" role="alert" style={{ marginTop: 8 }}>{out.err}</p>}
+      {link && <p className="small muted" style={{ margin: 0, overflowWrap: "anywhere" }}>Link copied. Anyone with it sees the same lock: <a href={link}>open link</a></p>}
+      {out.err && <p className="err" role="alert" style={{ margin: 0 }}>{out.err}</p>}
       {out.text !== undefined && (
-        <div style={{ marginTop: 12 }}>
+        <div>
           <Verdict ok yes={`Opened in this browser in ${out.ms} ms, with seeds the keypers released on chain at the bell.`} no="" />
-          <blockquote style={{ whiteSpace: "pre-wrap", marginTop: 8 }}>{out.text}</blockquote>
+          <p className="capsule-msg">{out.text}</p>
         </div>
       )}
-    </div>
+    </article>
   );
 }
 
@@ -236,25 +251,35 @@ export default function Page() {
 
   return (
     <>
-      <h1>Seal a message to the next bell</h1>
-      <p className="muted" style={{ marginTop: 10 }}>
-        The same two locks as an exam paper, in your browser. The keypers release a round every {cadenceMin} minutes; a message sealed to that round
-        cannot be opened before it, by anyone, and opens for its recipient right after. Encryption and decryption both happen on this page.
-      </p>
+      <div className="page-head">
+        <h1>Seal a message to the next bell</h1>
+        <p className="lead">
+          The same two locks as an exam paper, in your browser. The keypers release a round every {cadenceMin} minutes; a message sealed to that round
+          cannot be opened before it, by anyone, and opens for its recipient right after. Encryption and decryption both happen on this page.
+        </p>
+      </div>
       {wrongRegistry ? <p className="err">The published beacon names a different registry than this site uses. Not sealing.</p> : idx.error || recs.error ? <p className="err">Could not read the keypers from QoreChain testnet ({String(idx.error ?? recs.error)}). The RPC may be down; reload in a minute.</p> : !ready ? <p className="pending">Reading the keypers from QoreChain…</p> : (
         <>
-          <section style={{ marginTop: 20 }}>
+          <div className="stack" style={{ marginTop: 8 }}>
+          <section aria-label="Keyper status">
             <p className="small">Keypers now ({idx.data!.threshold} of {idx.data!.keypers.length} needed; the beacon keypers release every {cadenceMin} minutes, the others at least daily):</p>
             <KeyperHealth idx={idx.data!} recs={recs.data!} now={now} />
           </section>
           <SealPanel idx={idx.data!} recs={recs.data!} now={now} onSealed={add} />
-          <section style={{ marginTop: 24 }}>
-            <h3>2. Your sealed messages</h3>
+          <section className="stack" aria-labelledby="caps-h" style={{ marginTop: 12 }}>
+            <h3 id="caps-h">2. Your sealed messages</h3>
             {caps.length ? caps.map((c, i) => <CapsuleCard key={c.sealed.ct.slice(0, 24)} c={c} now={now} onRemove={() => remove(i)} />) : <p className="small muted">None yet. They stay in this browser only (and in any file or link you make).</p>}
-            <p className="small muted" style={{ marginTop: 12 }}>Have a capsule file? <input type="file" accept=".json,application/json" aria-label="Load a capsule file" onChange={async (e) => { const f = e.target.files?.[0]; if (f) { try { accept(JSON.parse(await f.text())); } catch { setLoadErr("That file is not a capsule."); } } }} /></p>
+            <div className="actions" style={{ marginTop: 0, alignItems: "center" }}>
+              <label className="file-btn">
+                Load a capsule file
+                <input type="file" accept=".json,application/json" className="sr-only" onChange={async (e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) { try { accept(JSON.parse(await f.text())); } catch { setLoadErr("That file is not a capsule."); } } }} />
+              </label>
+              <span className="small muted">from Download, or opened from a shared link</span>
+            </div>
             {loadErr && <p className="err" role="alert">{loadErr}</p>}
           </section>
-          <p className="small muted" style={{ marginTop: 24 }}>
+          </div>
+          <p className="small muted" style={{ marginTop: 28 }}>
             How it is checked: <Link href="/how/">How it works</Link> · keypers and their releases: <Link href="/keypers/">Keypers</Link> · what this does not protect against: <Link href="/security/">Security</Link>.
           </p>
         </>
