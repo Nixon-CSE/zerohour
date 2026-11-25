@@ -20,11 +20,11 @@
  * through an EVM window scoped to the ZeroHourExam contract only.
  */
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { mldsa87 } from "@qorechain/pqc";
 import { recipientOf, seal as qsSeal, type RecipientCard } from "@qorechain/qoreseal";
-import { resolveRecipient } from "@qorechain/qoreseal/network";
+import { fetchKemKey, resolveRecipient } from "@qorechain/qoreseal/network";
 import { deriveUnifiedAccount } from "@qorechain/sdk";
 import { weiToUqorCeil } from "@qorechain/evm";
 import {
@@ -236,6 +236,64 @@ ol.q>li{margin-bottom:16px}ol[type=A]{margin:6px 0 0;padding-left:24px}p{margin:
 
 // ------------------------------------------------------------------ commands
 const commands: Record<string, (a: string[]) => Promise<void>> = {
+  /**
+   * Publish the Hourglass beacon for browsers: for every beacon round (divisible by --every) from now until --until,
+   * each keyper's ML-KEM-1024 round public key with its Merkle proof (public data, checked here against the keyper's
+   * on-chain pkRoot by export-pk), one file per UTC day; plus the judges' centre's recipient record. A browser seals to
+   * these, and the always-on keypers (run with --beacon) release each beacon round at its time.
+   */
+  async beacon(args) {
+    const every = numOpt(args, "--every", 3);
+    const until = Date.parse(args.includes("--until") ? args[args.indexOf("--until") + 1] : "2026-12-16T23:59:59Z");
+    const ids = [1, 2, 3];
+    const hours = Math.ceil((until - Date.now()) / 3_600_000);
+    if (!(hours > 0)) throw new Error("--until must be in the future");
+    const out = resolve(ROOT, "deployments/beacon");
+    mkdirSync(resolve(out, "recipients"), { recursive: true });
+    type Exported = { keyper: Hex; registry: Hex; pkRoot: Hex; genesis: number; roundSeconds: number; keys: { round: number; publicKey: Hex; proof: Hex[] }[] };
+    const files: Exported[] = [];
+    for (const id of ids) {
+      const k = KEYPERS.find((x) => x.id === id)!;
+      const tmp = resolve(SECRETS, `beacon-k${id}.tmp.json`);
+      say(`keyper #${id}: exporting beacon round keys for the next ${hours} h (every ${every} rounds)…`);
+      keyperCli(k, ["export-pk", "--hours", String(hours), "--every", String(every), "--out", tmp]);
+      files.push(JSON.parse(readFileSync(tmp, "utf8")));
+      rmSync(tmp);
+    }
+    const [g, rs, reg] = [files[0].genesis, files[0].roundSeconds, files[0].registry];
+    if (files.some((f) => f.genesis !== g || f.roundSeconds !== rs || f.registry.toLowerCase() !== reg.toLowerCase())) throw new Error("keypers are not on one clock and registry");
+    const byRound = files.map((f) => new Map(f.keys.map((x) => [x.round, x])));
+    const rounds = [...byRound[0].keys()].filter((r) => byRound.every((m) => m.has(r))).sort((a, b) => a - b);
+    const days = new Map<string, { round: number; at: string; keys: Record<string, { publicKey: Hex; proof: Hex[] }> }[]>();
+    for (const r of rounds) {
+      const at = new Date((g + r * rs) * 1000).toISOString();
+      const keys = Object.fromEntries(files.map((f, i) => [f.keyper, { publicKey: byRound[i].get(r)!.publicKey, proof: byRound[i].get(r)!.proof }]));
+      const day = at.slice(0, 10);
+      if (!days.has(day)) days.set(day, []);
+      days.get(day)!.push({ round: r, at, keys });
+    }
+    const keypers = files.map((f, i) => ({ id: ids[i], address: f.keyper, pkRoot: f.pkRoot }));
+    for (const [day, bells] of days) {
+      writeFileSync(resolve(out, `${day}.json`), JSON.stringify({ v: 1, chainId: net_.chainId, registry: reg, genesis: g, roundSeconds: rs, every, keypers, bells }));
+    }
+    const existing = existsSync(resolve(out, "index.json")) ? (JSON.parse(readFileSync(resolve(out, "index.json"), "utf8")).days as string[]) : [];
+    const allDays = [...new Set([...existing, ...days.keys()])].sort();
+    writeFileSync(resolve(out, "index.json"), JSON.stringify({ v: 1, chainId: net_.chainId, registry: reg, genesis: g, roundSeconds: rs, every, threshold: THRESHOLD, keypers, days: allDays, recipients: ["centre-judges"] }, null, 2));
+
+    // The judges' centre as a recipient: its signed card plus the ML-KEM-1024 key registered on chain (a browser cannot
+    // read the chain's REST API, so the key is published; the browser checks it against the card's ML-DSA-87 signature).
+    const card: RecipientCard = JSON.parse(readFileSync(resolve(PUBLIC, "cards", "centre-judges.card.json"), "utf8"));
+    await resolveRecipient({ rest: net_.rest, chainId: net_.chainId, address: card.address, card }); // the full on-chain check
+    const kem = await fetchKemKey({ rest: net_.rest, address: card.address });
+    if (!kem.registered || !kem.publicKey) throw new Error("judges' centre has no KEM key on chain");
+    const judge = JSON.parse(readFileSync(resolve(PUBLIC, "judge-centre.json"), "utf8"));
+    writeFileSync(resolve(out, "recipients", "centre-judges.json"), JSON.stringify({
+      name: "centre-judges", label: "Judges' centre", address: card.address, evm: judge.evm, card,
+      mlkemPublicKey: bytesToHex(kem.publicKey), registeredHeight: String(kem.registeredHeight ?? ""), checkedAt: new Date().toISOString(),
+    }, null, 2));
+    say(`beacon: ${rounds.length} bells over ${days.size} days (${[...days.keys()][0]} … ${[...days.keys()].at(-1)}) for keypers ${ids.join(", ")}; files in deployments/beacon/.`);
+  },
+
   async actors() {
     const funder = await drill();
     for (const spec of ACTORS) {
