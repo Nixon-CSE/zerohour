@@ -1,0 +1,54 @@
+name: Become an outside keyper
+description: Join the next ZeroHour exam as an independent keyper (QoreChain testnet). Public keys only, never secrets.
+title: "Outside keyper: <your team or name>"
+labels: ["outside-keyper"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for running a keyper. Follow the guide first: https://github.com/Nixon-CSE/zerohour/tree/main/apps/keyper#become-an-outside-keyper-testnet-about-10-minutes
+        **Never paste anything from `account.secret.json` or `chain.secret.json`.** Everything below is public.
+  - type: input
+    id: address
+    attributes:
+      label: Keyper address (0x…)
+      description: Printed by `npx tsx src/cli.ts status` as "keyper".
+      placeholder: "0x…"
+    validations:
+      required: true
+  - type: input
+    id: setup
+    attributes:
+      label: Registration transaction
+      description: The `register … -> success` hash printed by `setup` (it proves your bond is on chain).
+      placeholder: "0x…"
+    validations:
+      required: true
+  - type: textarea
+    id: keys
+    attributes:
+      label: Round keys file
+      description: |
+        Drag `my-round-keys.json` here. If GitHub refuses the .json extension, rename it to `my-round-keys.txt` first,
+        or paste a link to a public gist. The board checks every key against your pkRoot on chain before using it.
+    validations:
+      required: true
+  - type: input
+    id: until
+    attributes:
+      label: Your daemon will run until (UTC)
+      description: We schedule your exam's bell inside this window and inside your 48-hour key file.
+      placeholder: "2026-11-28 18:00 UTC"
+    validations:
+      required: true
+  - type: checkboxes
+    id: rules
+    attributes:
+      label: Before you submit
+      options:
+        - label: I ran `export-pk` less than a few hours ago (the file covers the next 48 hours only).
+          required: true
+        - label: "`npx tsx src/cli.ts run` is running and will keep running until the time above."
+          required: true
+        - label: I understand my 1 test-QOR bond is slashed only if a seed of mine is published before its round.
+          required: true

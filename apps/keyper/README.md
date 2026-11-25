@@ -35,7 +35,10 @@ npx tsx src/cli.ts export-pk --hours 48 --out my-round-keys.json
 npx tsx src/cli.ts run        # 5. leave it running: it releases each exam round the moment it opens
 ```
 
-Then send `my-round-keys.json` and your `0x…` address to the ZeroHour board (open an issue on the repo).
+Then send `my-round-keys.json` and your `0x…` address to the ZeroHour board with the
+[**Become an outside keyper** issue form](https://github.com/Nixon-CSE/zerohour/issues/new?template=become-a-keyper.yml),
+right after exporting: the file covers the next 48 hours, and we schedule your exam's bell inside that window and
+inside the time you say your daemon will be running (keep `run` going until then, on a machine that will not sleep).
 The board checks every key against **your** `pkRoot` on chain before sealing to it
 (`npm run demo -- exam --outside my-round-keys.json`), so a tampered file is refused.
 Your keyper then appears on the [Keypers page](https://zerohour-exam.vercel.app/keypers/) and in the

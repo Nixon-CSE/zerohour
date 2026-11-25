@@ -74,7 +74,7 @@ npx tsx src/cli.ts new        # fresh account; fund the printed qor1… address
 npx tsx src/cli.ts setup      # ML-DSA-87 key, 60-day seed chain on the shared clock, 1 QOR bond
 npx tsx src/cli.ts export-pk --hours 48 --out my-round-keys.json   # public keys + proofs
 npx tsx src/cli.ts run        # release every exam round the moment it is due`}</pre>
-        <p className="mt-4">Then send <code>my-round-keys.json</code> and your address to the board by <a href="https://github.com/Nixon-CSE/zerohour/issues/new?title=Outside%20keyper" target="_blank" rel="noreferrer">opening an issue</a>. Your keyper joins the next exam.</p>
+        <p className="mt-4">Then send <code>my-round-keys.json</code> and your address to the board by <a href="https://github.com/Nixon-CSE/zerohour/issues/new?template=become-a-keyper.yml" target="_blank" rel="noreferrer">opening a &ldquo;Become an outside keyper&rdquo; issue</a>, right after exporting (the file covers 48 hours). We schedule an exam bell with you inside that window; keep <code>run</code> going until then on a machine that will not sleep. Public keys only: never share the secret files.</p>
         <p className="small muted mt-4">
           Faucet: <a href="https://dashboard.qorechain.io/faucet" target="_blank" rel="noreferrer">dashboard.qorechain.io/faucet</a>.
           The daemon opens EVM windows scoped to the registry only, checks its local chain against the on-chain record before it starts, and stops if it is ever slashed.
