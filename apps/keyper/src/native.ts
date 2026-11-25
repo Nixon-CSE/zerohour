@@ -20,7 +20,14 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { net_, paths, tuning } from "./config.ts";
 
-const FEE = { amount: [{ denom: "uqor", amount: "100000" }], gas: "800000" };
+/**
+ * Native fees are charged on the gas LIMIT (the chain's minimum price is 0.1 uqor/gas; we pay 0.125). 800k covers key
+ * registration and transfers. Opening an EVM window used 189,058 gas on testnet, so it gets 400k (2x headroom): 0.05 QOR
+ * instead of 0.1, which matters for a keyper that opens one a day for a month.
+ */
+const GAS_PRICE_UQOR = 0.125;
+const fee = (gas: number) => ({ amount: [{ denom: "uqor", amount: String(Math.ceil(gas * GAS_PRICE_UQOR)) }], gas: String(gas) });
+export const GAS = { default: 800_000, openWindow: 400_000 } as const;
 
 export function createAccountFile(): Promise<UnifiedAccount> {
   if (existsSync(paths.account)) throw new Error(`${paths.account} exists — refusing to overwrite an account`);
@@ -52,12 +59,12 @@ async function sequence(address: string) {
   return { accountNumber: BigInt(a.account_number ?? "0"), sequence: BigInt(a.sequence ?? "0") };
 }
 
-export async function broadcastNative(acc: UnifiedAccount, mode: "hybrid" | "classical", messages: any[]): Promise<string> {
+export async function broadcastNative(acc: UnifiedAccount, mode: "hybrid" | "classical", messages: any[], gas: number = GAS.default): Promise<string> {
   const { accountNumber, sequence: seq } = await sequence(acc.cosmos);
   const signer = new EthNativeSigner(acc, { signMode: mode, rest: net_.rest });
   const transport = await StargateClient.connect(net_.rpc);
   try {
-    const res = await signer.signAndBroadcast(transport, { chainId: net_.chainId, accountNumber, sequence: seq, fee: FEE, messages });
+    const res = await signer.signAndBroadcast(transport, { chainId: net_.chainId, accountNumber, sequence: seq, fee: fee(gas), messages });
     if (res.code !== 0) throw new Error(`native tx failed (code ${res.code}): ${res.transactionHash}`);
     return res.transactionHash;
   } finally {
@@ -98,5 +105,5 @@ export async function openWindow(acc: UnifiedAccount, targets: string[], perTxUq
     maxValue: perTxUqor * tuning.windowTxs + extraUqor,
     ...(targets.length ? { allowedTargets: targets } : {}),
   });
-  return broadcastNative(acc, "hybrid", [msg]);
+  return broadcastNative(acc, "hybrid", [msg], GAS.openWindow);
 }
