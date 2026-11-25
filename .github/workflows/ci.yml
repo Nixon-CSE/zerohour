@@ -36,6 +36,9 @@ jobs:
         with: { node-version: 20, cache: npm, cache-dependency-path: "**/package-lock.json" }
       # Every app depends on the crypto library by path, so it is installed first.
       - run: npm ci --prefix packages/hourglass
+      # The demo imports the keyper's source (@zerohour/keyper/src/...), whose imports resolve from apps/keyper.
+      - run: npm ci --prefix apps/keyper
+        if: matrix.pkg == 'apps/demo'
       - run: npm ci
         working-directory: ${{ matrix.pkg }}
         if: matrix.pkg != 'packages/hourglass'
