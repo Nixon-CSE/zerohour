@@ -57,6 +57,9 @@ Contracts referred to are the audited **v2** ones (`deployments/testnet.json`).
    (exam 0x7bc70985: the board sealed to a keyper from its public key file alone), but that keyper is a test account we
    operate; recruiting keypers from other teams is in progress. Running them on one machine also hurts liveness: in exam
    0x74c361d3 the shared laptop slept and every keyper released 6 minutes after the bell (the lock held; the paper was late).
+   Since 25 Nov keypers #1 and #2 run as systemd services on an always-on cloud VM (Azure, India South Central;
+   restart on failure, start at boot, secrets in root-only files) and keyper #3 on a separate home machine, so the
+   2-of-3 exams open at the bell without the laptop. They are still all operated by us.
 4. **Testnet economics.** Bonds are 1 test QOR; a real exam would set bond and threshold far higher.
 5. **Block time.** Validators collectively choose timestamps; a skew of seconds moves the bell by seconds.
 6. **A centre's decryption key is a file on a computer.** The console takes only that key (the 32-byte QoreSeal

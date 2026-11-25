@@ -50,6 +50,23 @@ never does that (see the rule above). To leave: `exit`, wait a day, `withdraw`.
 | `run [--heartbeat N] [--dry-run]` | watch `ExamCreated` for exams that list you; release their rounds on time. `--heartbeat N` also posts the current round whenever N rounds are unrevealed (default 288, once a day, so no release walks a long chain; `0` = exam rounds only). Backup rounds of exams that never switched are skipped |
 | `release-now [--dry-run]` | one-shot release of the current round |
 
+## Run it always-on (a server)
+
+A keyper must be online at every bell. On any Ubuntu server (we use an Azure student VM):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Nixon-CSE/zerohour/main/apps/keyper/deploy/setup-vm.sh -o setup-vm.sh
+sudo bash setup-vm.sh                      # Node 20, the code, a login-less user, the systemd unit
+# put KEYPER_MNEMONIC="…" and KEYPER_CHAIN_SECRET='{…}' in /etc/zerohour/keyper-1.env (root, 0600)
+sudo systemctl enable --now zerohour-keyper@1
+journalctl -u zerohour-keyper@1 -f         # releases, heartbeats, errors
+```
+
+The unit restarts the daemon after a failure (at most three times an hour, so a failing release cannot burn gas in a
+loop), never restarts a slashed keyper, starts at boot, and can write only its own state directory.
+`deploy/push-secrets.py` streams the two secrets over SSH into that root-only file without printing them. A container
+image is in `Dockerfile` (secrets from the same two environment variables). Run each keyper in exactly one place.
+
 ## Security properties
 
 - **Scoped EVM window.** Every EVM transaction on QoreChain needs a window opened by a

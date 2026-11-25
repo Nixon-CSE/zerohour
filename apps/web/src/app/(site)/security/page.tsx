@@ -24,7 +24,7 @@ const THREATS: [string, string, "live" | "next"][] = [
 
 const REAL: [string, "live" | "next"][] = [
   ["HourglassRegistry and ZeroHourExam on QoreChain testnet", "live"],
-  ["Three bonded keypers with ML-KEM-1024 round keys and daemons", "live"],
+  ["Three bonded keypers with ML-KEM-1024 round keys; #1 and #2 run 24/7 on a cloud VM, #3 on a separate machine (all operated by us)", "live"],
   ["Three centres (two demo centres and the public judges' centre) with on-chain KEM keys and signed recipient cards", "live"],
   ["In-browser opening with ciphertext, seed and anchor checks", "live"],
   ["Leak tracing against 1,000 variants (2 real centres, 998 simulated) and signed on-chain reports", "live"],
