@@ -18,11 +18,10 @@ import { Bubbles, Hash, Verdict, ago, span, useAsync, useChainNow, utc } from "@
 import { Button } from "@/components/ui/button";
 import { CURRENT, client, keyperRecord, type KeyperRecord } from "@/lib/chain";
 import { chainSeed, publicFile } from "@/lib/exam";
+import { bech32ToEvm, checkCapsule, type BeaconIndex, type Capsule } from "@/lib/capsule";
 
-type BeaconIndex = { v: 1; chainId: string; registry: Hex; genesis: number; roundSeconds: number; every: number; threshold: number; keypers: { id: number; address: Hex; pkRoot: Hex }[]; days: string[]; recipients: string[] };
 type BeaconDay = { bells: { round: number; at: string; keys: Record<string, { publicKey: Hex; proof: Hex[] }> }[] };
 type Recipient = { name: string; label: string; address: string; evm: Hex; card: RecipientCard; mlkemPublicKey: Hex };
-type Capsule = { v: 1; kind: "zerohour-capsule"; chainId: string; registry: Hex; round: number; at: string; threshold: number; keypers: Hex[]; recipient: { name: string; label: string; address: string }; sealed: SealedPaper; createdAt: string };
 
 const STORE = "zh-capsules";
 const MAX_CHARS = 2000;
@@ -30,32 +29,6 @@ const PQC_KEY_STATUS = "0x0000000000000000000000000000000000000a02" as const; //
 const KEY_STATUS_ABI = parseAbi(["function pqcKeyStatus(address account) view returns (bool, uint8, bytes)"]);
 const loadSaved = (): Capsule[] => { try { return JSON.parse(localStorage.getItem(STORE) ?? "[]"); } catch { return []; } };
 const saveAll = (c: Capsule[]) => { try { localStorage.setItem(STORE, JSON.stringify(c.slice(0, 20))); } catch { /* private window: the download and the link still work */ } };
-
-/** qor1… → 0x…: the same 20 bytes, so the card's account and the EVM address we read keys for are one account. */
-function bech32ToEvm(addr: string): Hex {
-  const CH = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
-  const data = addr.slice(addr.lastIndexOf("1") + 1, -6).split("").map((c) => { const v = CH.indexOf(c); if (v < 0) throw new Error("bad bech32"); return v; });
-  let acc = 0, bits = 0; const out: number[] = [];
-  for (const v of data) { acc = (acc << 5) | v; bits += 5; while (bits >= 8) { bits -= 8; out.push((acc >> bits) & 0xff); } }
-  if (out.length !== 20) throw new Error("not a 20-byte account");
-  return bytesToHex(Uint8Array.from(out)) as Hex;
-}
-
-/**
- * A capsule from a link or file is untrusted. Accept it only if it names our registry and keypers, and its bell is the
- * round actually sealed into it (the round is bound into the ciphertext header), so the page never shows a false bell
- * or reads "seeds" from someone else's contract.
- */
-function checkCapsule(c: Capsule, idx: BeaconIndex): string | null {
-  if (c?.kind !== "zerohour-capsule" || !c.sealed) return "not a ZeroHour capsule";
-  if (c.registry?.toLowerCase() !== idx.registry.toLowerCase()) return "it names a different keyper registry";
-  if (!c.keypers.every((k) => idx.keypers.some((x) => x.address.toLowerCase() === k.toLowerCase()))) return "it names keypers that are not ZeroHour's";
-  if (c.round !== c.sealed.round || c.threshold !== c.sealed.threshold || c.chainId !== c.sealed.chainId) return "its label does not match what is sealed inside";
-  if (Date.parse(c.at) / 1000 !== idx.genesis + c.round * idx.roundSeconds) return "its bell time does not match its round";
-  const sealedKeypers = c.sealed.shares.map((s) => s.keyper.toLowerCase()).sort().join();
-  if (sealedKeypers !== c.keypers.map((k) => k.toLowerCase()).sort().join()) return "its keyper list does not match the sealed shares";
-  return null;
-}
 
 /** The ML-DSA-87 key the chain holds for an account, read live through the pqcKeyStatus precompile. */
 async function onchainPqKey(evm: Hex): Promise<Uint8Array> {
