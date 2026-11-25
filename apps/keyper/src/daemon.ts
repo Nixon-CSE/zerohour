@@ -71,6 +71,7 @@ export interface RunOptions {
   once?: boolean;
   dryRun?: boolean;
   heartbeatEvery?: number;
+  beaconEvery?: number;
   extraTargets?: number[];
 }
 
@@ -79,7 +80,7 @@ export async function run(acc: UnifiedAccount, secret: ChainSecret, opts: RunOpt
   const top = hexToBytes(secret.top);
   const state = loadState();
   assertSecretMatches(secret, await keyperRecord(me));
-  log("start", { keyper: me, registry: contracts.hourglass, exam: contracts.exam, dryRun: !!opts.dryRun, heartbeatEvery: opts.heartbeatEvery ?? 0 });
+  log("start", { keyper: me, registry: contracts.hourglass, exam: contracts.exam, dryRun: !!opts.dryRun, heartbeatEvery: opts.heartbeatEvery ?? 0, beaconEvery: opts.beaconEvery ?? 0 });
 
   let stop = false;
   process.once("SIGINT", () => ((stop = true), log("stopping")));
@@ -127,6 +128,7 @@ export async function run(acc: UnifiedAccount, secret: ChainSecret, opts: RunOpt
         chainTime: head.time,
         targets: [...state.targets.map((t) => t.round), ...(opts.extraTargets ?? [])],
         heartbeatEvery: opts.heartbeatEvery,
+        beaconEvery: opts.beaconEvery,
         safetySeconds: tuning.safetySeconds,
       });
 

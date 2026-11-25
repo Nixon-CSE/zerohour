@@ -30,11 +30,12 @@ export interface PlanInput {
   chainTime: number; // timestamp of the latest block
   targets: number[]; // rounds some exam depends on (from ExamCreated where we are a keyper)
   heartbeatEvery?: number; // also release the current round once this many rounds are unrevealed (0 = off)
+  beaconEvery?: number; // also release every round divisible by this once it is due (0 = off): a public time-lock beacon
   safetySeconds?: number; // extra margin after the unlock time (default 2 s)
 }
 
 export type Plan =
-  | { action: "release"; round: number; reason: "target" | "heartbeat"; steps: number }
+  | { action: "release"; round: number; reason: "target" | "beacon" | "heartbeat"; steps: number }
   | { action: "wait"; nextTarget?: number; secondsUntil?: number }
   | { action: "done" };
 
@@ -47,6 +48,17 @@ export function plan(p: PlanInput): Plan {
   // Smallest due target first: each exam round gets its own seedOf entry and its own event.
   const due = open.find(isDue);
   if (due !== undefined) return { action: "release", round: due, reason: "target", steps: due + 1 - clock.nextRound };
+
+  // Beacon: the latest due round on the beacon cadence. Anything sealed to a beacon round (for example from the
+  // browser, with the published round keys) opens within one cadence. Releasing the latest one also reveals any
+  // earlier beacon round we missed, so after downtime there is one catch-up release, not a backlog.
+  const bc = p.beaconEvery ?? 0;
+  if (bc > 0) {
+    const b = Math.floor(currentRound(clock, chainTime - safety) / bc) * bc;
+    if (b >= clock.nextRound && b <= clock.maxRound && isDue(b)) {
+      return { action: "release", round: b, reason: "beacon", steps: b + 1 - clock.nextRound };
+    }
+  }
 
   const hb = p.heartbeatEvery ?? 0;
   if (hb > 0) {

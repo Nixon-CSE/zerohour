@@ -44,6 +44,9 @@ export const tuning = {
   // Release the current round once this many are unrevealed, so a release never has to walk a long chain
   // (a 1,296-step walk ran out of gas on 20 Nov). 288 = one day of 5-minute rounds; 0 = exam rounds only.
   heartbeatEvery: Number(env.HEARTBEAT_EVERY ?? 288),
+  // Beacon cadence in rounds (3 = every 15 minutes); 0 = off. Our always-on keypers run it so browser-sealed
+  // messages open within one cadence; an outside keyper does not have to.
+  beaconEvery: Number(env.BEACON_EVERY ?? 0),
   maxFeeGwei: BigInt(env.MAX_FEE_GWEI ?? 500),
   windowBlocks: BigInt(env.WINDOW_BLOCKS ?? 8_000),
   windowTxs: BigInt(env.WINDOW_TXS ?? 20),

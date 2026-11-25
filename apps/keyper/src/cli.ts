@@ -11,6 +11,7 @@
  *   release-now         one-shot: release the current round (e.g. drill-day transaction)
  *   exit | withdraw     leave the registry: request exit, then (after the delay) withdraw the bond
  *   export-pk R [R..]   print round R's ML-KEM-1024 public key + Merkle proof against pkRoot (JSON)
+ *                       --hours N [--every K] [--out f]: the next N hours (only rounds divisible by K)
  *
  * Files live in $KEYPER_HOME (default ~/.zerohour-keyper); see src/config.ts.
  */
@@ -136,7 +137,11 @@ const commands: Record<string, (a: string[]) => Promise<void>> = {
 
   async run(args) {
     const hb = opt(args, "--heartbeat");
-    await run(await loadAccount(), loadSecret(), { dryRun: flag(args, "--dry-run"), once: flag(args, "--once"), heartbeatEvery: hb ? Number(hb) : tuning.heartbeatEvery });
+    const bc = opt(args, "--beacon");
+    await run(await loadAccount(), loadSecret(), {
+      dryRun: flag(args, "--dry-run"), once: flag(args, "--once"),
+      heartbeatEvery: hb ? Number(hb) : tuning.heartbeatEvery, beaconEvery: bc ? Number(bc) : tuning.beaconEvery,
+    });
   },
 
   /** Publish round public keys so a board can seal to them. Refuses rounds already revealed. */
@@ -159,7 +164,11 @@ const commands: Record<string, (a: string[]) => Promise<void>> = {
       const last = Math.min(secret.maxRound, first + Math.ceil((hours * 3600) / rec.roundSeconds));
       rounds = Array.from({ length: last - first + 1 }, (_, i) => first + i);
     } else rounds = args.filter((a) => /^\d+$/.test(a)).map(Number);
-    if (!rounds.length || rounds.some((r) => !Number.isInteger(r) || r < 0 || r > secret.maxRound)) throw new Error("usage: export-pk <round> [round…] | export-pk --hours N [--out file.json]");
+    // --every N: only rounds on the beacon cadence (what a keyper running --beacon N releases).
+    const every = args.includes("--every") ? Number(args[args.indexOf("--every") + 1]) : 1;
+    if (!Number.isInteger(every) || every < 1) throw new Error("--every must be a positive integer");
+    rounds = rounds.filter((r) => r % every === 0);
+    if (!rounds.length || rounds.some((r) => !Number.isInteger(r) || r < 0 || r > secret.maxRound)) throw new Error("usage: export-pk <round> [round…] | export-pk --hours N [--every N] [--out file.json]");
     // One walk down the chain: seed[r-1] = keccak(seed[r]), so start at the highest round and step down
     // (rebuilding each seed from the top would cost maxRound hashes per round).
     const sorted = [...new Set(rounds)].sort((x, y) => y - x);

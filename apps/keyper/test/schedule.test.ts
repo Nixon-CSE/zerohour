@@ -85,3 +85,20 @@ test("a daily heartbeat bounds every release to a short, cheap walk", () => {
   assert.equal(plan({ clock: long, chainTime: roundTime(long, 287) + 5, targets: [], heartbeatEvery: 288 }).action, "wait");
   assert.ok(releaseGas(288) < 200_000n);
 });
+
+test("beacon: releases each cadence round once due, never early, one catch-up after downtime, exams first", () => {
+  const c: KeyperClock = { genesis: 1_000_000, roundSeconds: 300, maxRound: 17_280, nextRound: 31 };
+  const at = (r: number, plus = 3) => roundTime(c, r) + plus; // chain time just after round r opens (safety 2 s)
+  // Round 33 is the next multiple of 3. One second before it is due: nothing.
+  assert.equal(plan({ clock: c, chainTime: roundTime(c, 33) + 1, targets: [], beaconEvery: 3 }).action, "wait");
+  // Just after: release exactly 33.
+  assert.deepEqual(plan({ clock: c, chainTime: at(33), targets: [], beaconEvery: 3 }), { action: "release", round: 33, reason: "beacon", steps: 3 });
+  // Rounds 34, 35 are not beacon rounds: nothing to do once 33 is out.
+  assert.equal(plan({ clock: { ...c, nextRound: 34 }, chainTime: at(35), targets: [], beaconEvery: 3 }).action, "wait");
+  // Down for an hour (rounds 33..45 due): one release of the latest beacon round 45, which also reveals 33..44.
+  assert.deepEqual(plan({ clock: c, chainTime: at(46), targets: [], beaconEvery: 3 }), { action: "release", round: 45, reason: "beacon", steps: 15 });
+  // A due exam round still comes first.
+  assert.deepEqual(plan({ clock: c, chainTime: at(33), targets: [32], beaconEvery: 3 }), { action: "release", round: 32, reason: "target", steps: 2 });
+  // Off by default.
+  assert.equal(plan({ clock: c, chainTime: at(33), targets: [] }).action, "wait");
+});

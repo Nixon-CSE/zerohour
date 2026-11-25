@@ -64,7 +64,11 @@ journalctl -u zerohour-keyper@1 -f         # releases, heartbeats, errors
 
 The unit restarts the daemon after a failure (at most three times an hour, so a failing release cannot burn gas in a
 loop), never restarts a slashed keyper, starts at boot, and can write only its own state directory.
-`deploy/push-secrets.py` streams the two secrets over SSH into that root-only file without printing them. A container
+`deploy/push-secrets.py` streams the two secrets over SSH into that root-only file without printing them.
+Add `BEACON_EVERY=3` to the env file to also release every third round (every 15 minutes): the public beacon that
+messages sealed on the site's "Seal a message" page open with. It costs about 0.0068 test QOR per release with
+multi-transaction windows; a keyper that opens a window per release pays a flat 0.1 QOR window fee each time, so
+keep the beacon on keypers with normal windows. A container
 image is in `Dockerfile` (secrets from the same two environment variables). Run each keyper in exactly one place.
 
 ## Security properties
