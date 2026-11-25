@@ -17,6 +17,11 @@ Live: **https://zerohour-exam.vercel.app** · every number on the site is read f
    from the keypers' public seeds, and decrypts with the centre's ML-KEM-1024 key. Nothing is sent anywhere.
 3. Under the paper it confirms two things: this is **the copy that centre signed for on chain**, and it is
    **exactly the copy rebuilt from the board's public fairness reveal**.
+4. Then lock something yourself: [**Seal a message to the next bell**](https://zerohour-exam.vercel.app/seal/).
+   Your browser checks each keyper's round key against the root it committed on chain, checks the recipient's
+   card against the ML-DSA-87 key the chain holds for it, and seals with ML-KEM-1024, Shamir 2-of-3 and QoreSeal.
+   Our keypers release a round every 15 minutes from an always-on server, so the message opens at its bell (and
+   "Try to open now" before it shows the lock holding).
 
 ## The problem
 

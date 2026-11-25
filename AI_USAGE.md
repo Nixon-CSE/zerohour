@@ -54,6 +54,7 @@ The same loop ran for every part of the build:
 | Leak Hunter | Vision reader, deterministic matcher, tracer and filing rule; offline tests; a real run from a phone photo | `3a18de0`–`c99ccb6`, 6 tests |
 | Bribery and slashing | A fourth bonded keyper sells its seed before the bell; a whistleblower commit-reveals it and the contract slashes the bond; the exam still opens on time | `e02adbd`–`de4cff1`, `deployments/demo/0x2db24058/run.json` |
 | Backup switch | The Leak Hunter recognises a leak in the setters' master-copy order (no centre accused); the board retires paper A in one signed transaction and backup B opens at its own bell | `deployments/demo/0x4c518322/run.json`, 2 more Leak Hunter tests |
+| Seal in the browser + beacon | A page that seals a message to the next bell entirely client-side (round keys checked against on-chain pkRoots, the recipient card against its on-chain ML-DSA-87 key) and opens it from on-chain seeds; a keyper beacon mode that releases every 15 minutes; always-on keypers on a cloud VM (systemd units, secrets streamed over SSH) | `apps/web/src/app/(site)/seal/page.tsx`, `deployments/beacon/`, `apps/keyper/deploy/`; first browser capsule opened at the 07:05 UTC bell on 25 Nov |
 
 ## Mistakes the agent caught in its own work
 
@@ -72,6 +73,10 @@ before it shipped". These were all found by the agent's own checks:
 | Whole-word matching failed on OCR-style typos | A Leak Hunter test written to break it | Switched to character-trigram similarity; 6/6 tests pass |
 | A keyper whose last release was far back ran out of gas on testnet: 1,296 hash steps against a limit from a 120 gas/step guess. The daemon then resent the same transaction 17 times | Reading the keyper logs after the backup exam's bell, then comparing gas used with the gas limit on the receipts | Gas formula fitted to real receipts (about 175 gas/step, plus 30%), out-of-gas retries get 1.5x gas, 3 reverts on one round stop the daemon, plus a regression test built from the receipts. The same release then succeeded using 306,997 gas, 1,477 over the old limit |
 | The project page's tagline claimed the exam board cannot read the paper. It can, because it writes the paper | Comparing the tagline with the site's own threat model | The agent asked the human to correct it rather than overclaim |
+| `forge test` failed on a fresh clone: forge-std is not committed and the README never said to install it | A judge-style audit that cloned the public repo and ran only the README's commands | README and AI_USAGE now pin `forge install foundry-rs/forge-std@v1.17.0`; 31/31 on the clone |
+| The browser cannot read QoreChain's REST API (no CORS header), so QoreSeal's `resolveRecipient` cannot run on the seal page | Probing the endpoints before writing the page | The page reads the recipient's ML-DSA-87 key live from the `pqcKeyStatus` precompile over the EVM RPC and checks the published card against it |
+| Running the 15-minute beacon on keyper #1 would cost about 9.6 test QOR a day: its 1-transaction windows each pay a flat 0.1 QOR fee | Measuring balances after the first beacon releases instead of trusting the estimate | Keyper #1 runs heartbeat-only; keypers #2 and #3 (normal windows, 0.0068 QOR per release) carry the beacon |
+| The seal page trusted capsules from links and files: a forged link could show a false bell, name a fake registry, or bind a recipient file to a different account | The agent's own audit of the page's trust boundaries | Capsules are checked against the published registry, keypers and the round sealed in the header; the recipient's EVM address is bound to its card's account; tested with three forged capsules |
 
 ## The self-audit (20 Nov)
 

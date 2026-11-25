@@ -24,7 +24,7 @@ const THREATS: [string, string, "live" | "next"][] = [
 
 const REAL: [string, "live" | "next"][] = [
   ["HourglassRegistry and ZeroHourExam on QoreChain testnet", "live"],
-  ["Three bonded keypers with ML-KEM-1024 round keys; #1 and #2 run 24/7 on a cloud VM, #3 on a separate machine (all operated by us)", "live"],
+  ["Three bonded keypers with ML-KEM-1024 round keys, running 24/7 as separate services on one cloud VM (all operated by us)", "live"],
   ["Three centres (two demo centres and the public judges' centre) with on-chain KEM keys and signed recipient cards", "live"],
   ["In-browser opening with ciphertext, seed and anchor checks", "live"],
   ["Leak tracing against 1,000 variants (2 real centres, 998 simulated) and signed on-chain reports", "live"],
@@ -34,6 +34,7 @@ const REAL: [string, "live" | "next"][] = [
   ["v2 contracts after an internal audit: no keyper re-registration, exam ids bound to the board, keyper sets checked on chain, receipts per paper set", "live"],
   ["Leak Hunter reading a real phone photo with Claude vision", "live"],
   ["Backup-paper switch on a real leak, before the bell", "live"],
+  ["Seal a message to the next bell in the browser: round keys checked against on-chain pkRoots, recipient card checked against its on-chain ML-DSA-87 key, opened at the bell from on-chain seeds", "live"],
   ["Outside-keyper path: an exam sealed to a keyper from its published public keys alone, each checked against its on-chain root (run with a test keyper we operate)", "live"],
   ["Outside keypers from other institutions", "next"],
   ["Multi-setter sealing so no single person holds the paper", "next"],

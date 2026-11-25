@@ -57,16 +57,20 @@ Contracts referred to are the audited **v2** ones (`deployments/testnet.json`).
    (exam 0x7bc70985: the board sealed to a keyper from its public key file alone), but that keyper is a test account we
    operate; recruiting keypers from other teams is in progress. Running them on one machine also hurts liveness: in exam
    0x74c361d3 the shared laptop slept and every keyper released 6 minutes after the bell (the lock held; the paper was late).
-   Since 25 Nov keypers #1 and #2 run as systemd services on an always-on cloud VM (Azure, India South Central;
-   restart on failure, start at boot, secrets in root-only files) and keyper #3 on a separate home machine, so the
-   2-of-3 exams open at the bell without the laptop. They are still all operated by us.
+   Since 25 Nov all three run as separate systemd services on one always-on cloud VM (Azure, India South Central;
+   restart on failure, start at boot, secrets in root-only files), so 2-of-3 bells open without the laptop. That
+   trades the laptop's liveness problem for a single host and a single operator: still all ours.
 4. **Testnet economics.** Bonds are 1 test QOR; a real exam would set bond and threshold far higher.
-5. **Block time.** Validators collectively choose timestamps; a skew of seconds moves the bell by seconds.
-6. **A centre's decryption key is a file on a computer.** The console takes only that key (the 32-byte QoreSeal
+5. **The beacon is ours.** Since 25 Nov our keypers also release every third round (every 15 minutes) so that
+   messages sealed in the browser (/seal) open on time. A message sealed to a round is as safe as that round:
+   readable before its time only if a threshold of keypers colludes, and (by design) by anyone holding the
+   recipient key after it. The demo recipient is the judges' centre, whose key is public on purpose.
+6. **Block time.** Validators collectively choose timestamps; a skew of seconds moves the bell by seconds.
+7. **A centre's decryption key is a file on a computer.** The console takes only that key (the 32-byte QoreSeal
    seed), never the account's recovery phrase, and refuses a pasted phrase; the key cannot sign or move funds.
    A real centre would keep it on a hardware device.
-7. **Leak tracing is closed-world.** The posterior ranks the candidate set; 998 of the 1,000 traced centres are simulated. A leaker who re-orders questions evades attribution. Only someone holding the permutation seeds before the reveal (the board) could produce another centre's order, so a match names that centre or the board (T20).
-8. **One browser-usable RPC.** QoreChain testnet publishes one EVM HTTP endpoint; its WebSocket endpoint refuses
+8. **Leak tracing is closed-world.** The posterior ranks the candidate set; 998 of the 1,000 traced centres are simulated. A leaker who re-orders questions evades attribution. Only someone holding the permutation seeds before the reveal (the board) could produce another centre's order, so a match names that centre or the board (T20).
+9. **One browser-usable RPC.** QoreChain testnet publishes one EVM HTTP endpoint; its WebSocket endpoint refuses
    browser user agents (checked 21 Nov). If the endpoint is down the site says so and retries; the keyper daemons
    (server clients) are unaffected. Every check can still be re-run from the repo against any node.
 
