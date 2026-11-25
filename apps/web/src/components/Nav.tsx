@@ -10,7 +10,7 @@ import { ThemeToggle } from "./ThemeToggle";
 
 export const LINKS = [
   { href: "/live/", label: "Live bell" },
-  { href: "/seal/", label: "Seal a message" },
+  { href: "/seal/", label: "Seal" },
   { href: "/how/", label: "How it works" },
   { href: "/security/", label: "Security" },
   { href: "/keypers/", label: "Keypers" },
@@ -25,7 +25,7 @@ export function Nav() {
     <header className={cn("top", home && "top-dark")}>
       <div className="wrap">
         <Link href="/" className="mark"><i aria-hidden />ZeroHour</Link>
-        <nav className="nav hidden md:flex" aria-label="Main">
+        <nav className="nav hidden lg:flex" aria-label="Main">
           {LINKS.map((l) => (
             <Link key={l.href} href={l.href} aria-current={here(l.href) ? "page" : undefined}>{l.label}</Link>
           ))}
@@ -33,12 +33,12 @@ export function Nav() {
         <div className="ml-auto flex items-center gap-2">
           <span className="hidden xl:flex"><HeadTick /></span>
           <ThemeToggle className={home ? "text-white hover:bg-white/10 hover:text-white" : ""} />
-          <Button asChild size="lg" className={cn("hidden sm:inline-flex", home && "bg-[var(--omr)] text-white hover:bg-[var(--omr)]/85")}>
+          <Button asChild size="lg" className={cn("hidden sm:inline-flex", home && "bg-[#c92d62] text-white hover:bg-[#b0264f]")}>
             <Link href="/exam/?id=0x53cf9dc20c56b3abec5f0763981dab01f541fdb78cff5bc650c0c9d80e8670b0">See a real exam</Link>
           </Button>
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon-lg" className="md:hidden" aria-label="Open menu"><Menu /></Button>
+              <Button variant="ghost" size="icon-lg" className="lg:hidden" aria-label="Open menu"><Menu /></Button>
             </SheetTrigger>
             <SheetContent side="right" className="w-72 bg-[var(--paper)] p-6">
               <SheetTitle className="mark mb-6"><i aria-hidden />ZeroHour</SheetTitle>

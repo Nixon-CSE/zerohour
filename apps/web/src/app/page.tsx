@@ -59,7 +59,7 @@ function Hero() {
             ML-KEM-1024 key. Post a seed early and you lose your bond. Leak the paper after the bell and the copy tells us which centre it came from.
           </p>
           <div className="hero-cta">
-            <Button asChild size="xl" className="bg-[var(--omr)] text-white hover:bg-[#d84a7a]">
+            <Button asChild size="xl" className="bg-[#c92d62] text-white hover:bg-[#b0264f]">
               <Link href="/live/">Watch the live bell</Link>
             </Button>
             <Button asChild size="xl" variant="outline" className="border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white">

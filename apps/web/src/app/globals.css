@@ -444,3 +444,34 @@ html.is-landing .site-foot { border-top: 0; }
 @media (min-width: 900px) { .steps.two { display: grid; grid-template-columns: 1fr 1fr; column-gap: 56px; } }
 .steps.two code { display: inline-block; margin-top: 4px; }
 }
+
+/* ---- UI audit 25 Nov ---- */
+/* Function names in the "life of an exam" steps wrap on phones instead of widening the page. */
+.steps code.hash { white-space: normal; overflow-wrap: anywhere; }
+/* Wide data tables scroll sideways inside .scroll; edge shadows show there is more (Lea Verou's scroll shadows). */
+.scroll {
+  background:
+    linear-gradient(to right, var(--paper) 30%, transparent) left / 40px 100% no-repeat local,
+    linear-gradient(to left, var(--paper) 30%, transparent) right / 40px 100% no-repeat local,
+    radial-gradient(farthest-side at 0 50%, rgba(0,0,0,.16), transparent) left / 14px 100% no-repeat scroll,
+    radial-gradient(farthest-side at 100% 50%, rgba(0,0,0,.16), transparent) right / 14px 100% no-repeat scroll;
+}
+/* Native selects match the other inputs and never overflow their column. */
+select {
+  display: block; width: 100%; max-width: 100%; min-height: 44px;
+  font: 15px/1.4 var(--f-ui); color: var(--graphite);
+  background: var(--paper-2); border: 1.5px solid var(--rule); border-radius: 6px; padding: 8px 10px;
+}
+select:focus { border-color: var(--pen); outline: none; }
+/* A written message reads better in the UI font than in the hash font used for keys. */
+textarea.msg { font: 15px/1.55 var(--f-ui); min-height: 110px; }
+.field { display: grid; gap: 6px; margin-bottom: 14px; }
+.field label { margin: 0; }
+.checklist { list-style: none; padding: 0; margin: 14px 0 0; display: grid; gap: 8px; font-size: 14px; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.stack { display: grid; gap: 16px; }
+.capsule-msg { white-space: pre-wrap; margin: 10px 0 0; padding: 14px 16px; border-left: 3px solid var(--pen); background: var(--paper-2); border-radius: 0 6px 6px 0; overflow-wrap: anywhere; }
+.file-btn { display: inline-flex; align-items: center; min-height: 36px; padding: 0 14px; border: 1.5px solid var(--rule); border-radius: 8px; font: 600 14px var(--f-ui); cursor: pointer; margin: 0; background: var(--paper); }
+.file-btn:hover { border-color: var(--graphite-2); }
+.file-btn:focus-within { outline: 2px solid var(--pen); outline-offset: 2px; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
