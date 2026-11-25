@@ -10,6 +10,7 @@ import { ThemeToggle } from "./ThemeToggle";
 
 export const LINKS = [
   { href: "/live/", label: "Live bell" },
+  { href: "/seal/", label: "Seal a message" },
   { href: "/how/", label: "How it works" },
   { href: "/security/", label: "Security" },
   { href: "/keypers/", label: "Keypers" },
@@ -33,7 +34,7 @@ export function Nav() {
           <span className="hidden xl:flex"><HeadTick /></span>
           <ThemeToggle className={home ? "text-white hover:bg-white/10 hover:text-white" : ""} />
           <Button asChild size="lg" className={cn("hidden sm:inline-flex", home && "bg-[var(--omr)] text-white hover:bg-[var(--omr)]/85")}>
-            <Link href="/exam/?id=0xe54bb5d08c756ff06bdeb69145566653781d71644beecc8c0c47e3abd6b2b1ed">See a real exam</Link>
+            <Link href="/exam/?id=0x53cf9dc20c56b3abec5f0763981dab01f541fdb78cff5bc650c0c9d80e8670b0">See a real exam</Link>
           </Button>
           <Sheet>
             <SheetTrigger asChild>
