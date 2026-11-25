@@ -1,0 +1,49 @@
+# Every push and pull request: the contracts, the crypto library, the keyper daemon, the Leak Hunter and the website,
+# built and tested from a clean checkout exactly as the README tells a reader to.
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contracts:
+    name: Contracts (Foundry)
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: contracts } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+      - run: forge install foundry-rs/forge-std@v1.17.0 --no-git
+      - run: forge build --sizes
+      - run: forge test -vv
+
+  typescript:
+    name: ${{ matrix.pkg }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        pkg: [packages/hourglass, apps/keyper, apps/demo, apps/web]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm, cache-dependency-path: "**/package-lock.json" }
+      # Every app depends on the crypto library by path, so it is installed first.
+      - run: npm ci --prefix packages/hourglass
+      - run: npm ci
+        working-directory: ${{ matrix.pkg }}
+        if: matrix.pkg != 'packages/hourglass'
+      - run: npx tsc --noEmit -p .
+        working-directory: ${{ matrix.pkg }}
+      - run: npm test
+        working-directory: ${{ matrix.pkg }}
+      - name: Production build of the site
+        if: matrix.pkg == 'apps/web'
+        run: npm run build
+        working-directory: apps/web
