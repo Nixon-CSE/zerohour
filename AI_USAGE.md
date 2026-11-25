@@ -165,10 +165,11 @@ re-hashes the evidence in your browser.
 
 ```bash
 git log --format='%h %ad %an %s' --date=iso             # every commit, all by the human
-cd contracts && forge install foundry-rs/forge-std@v1.17.0 --no-git && forge test   # 31 tests
+cd contracts && forge install foundry-rs/forge-std@v1.17.0 --no-git && forge test   # 32 tests
 cd packages/hourglass && npm i && npm test               # 11 tests
-cd apps/keyper && npm i && npm test                      # 11 tests
+cd apps/keyper && npm i && npm test                      # 12 tests
 cd apps/demo && npm i && npm test                        # 8 Leak Hunter tests, no API key needed
+cd apps/web && npm i && npm test                         # 4 tests: capsule and address checks
 cd apps/demo && npm run demo -- hunt <photo> --reader claude-code   # the Leak Hunter on your own photo
 ```
 

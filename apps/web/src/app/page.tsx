@@ -17,6 +17,9 @@ import { centreLabel } from "@/lib/names";
 const Scene = dynamic(() => import("@/components/hero/HourglassScene"), { ssr: false, loading: () => <div className="scene-wait" aria-hidden /> });
 
 const DEMO = "0xe54bb5d08c756ff06bdeb69145566653781d71644beecc8c0c47e3abd6b2b1ed";
+// The v2 Public exam and its judges' centre, whose decryption key is public on purpose: anyone can open a real paper.
+const PUBLIC_EXAM = "0x53cf9dc20c56b3abec5f0763981dab01f541fdb78cff5bc650c0c9d80e8670b0";
+const JUDGES_CENTRE = "0x42cAa5806f04b7AE51CFd4A0afB4dC08aeA0a303";
 const CLOCK = { genesis: 1795179900, roundSeconds: 300 }; // the v2 keypers' shared clock (deployments/testnet.json)
 
 function Hero() {
@@ -61,6 +64,9 @@ function Hero() {
             </Button>
             <Button asChild size="xl" variant="outline" className="border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white">
               <Link href="/how/">See how it works</Link>
+            </Button>
+            <Button asChild size="xl" variant="outline" className="border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white">
+              <Link href="/seal/">Seal a message yourself</Link>
             </Button>
           </div>
           <dl className="chips" aria-label="Live from QoreChain">
@@ -270,9 +276,9 @@ function Proof() {
           <span className="muted">Ciphertext hashes, receipts, a leak report and the fairness proof.</span>
           <span className="proof-go">Board view <ArrowUpRight className="size-4" /></span>
         </Link>
-        <Link href={`/open/?id=${DEMO}&centre=0x13e39273957F818746Fd38384374F3ff850E2E8f`} className="proof-item">
+        <Link href={`/open/?id=${PUBLIC_EXAM}&centre=${JUDGES_CENTRE}`} className="proof-item">
           <b>Open a paper yourself</b>
-          <span className="muted">The centre console decrypts in the page, in milliseconds.</span>
+          <span className="muted">As the judges&apos; centre, whose key is public: the console decrypts in the page, in milliseconds.</span>
           <span className="proof-go">Centre console <ArrowUpRight className="size-4" /></span>
         </Link>
       </div>

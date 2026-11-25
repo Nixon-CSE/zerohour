@@ -1,5 +1,7 @@
 # ZeroHour
 
+[![CI](https://github.com/Nixon-CSE/zerohour/actions/workflows/ci.yml/badge.svg)](https://github.com/Nixon-CSE/zerohour/actions/workflows/ci.yml)
+
 **Exam papers that no printer, courier or exam centre can open before the bell.**
 A post-quantum time lock on QoreChain, built for *Build Before Q-Day* (Encrypted Apps).
 
@@ -57,6 +59,16 @@ order against every centre's copy, and against the setters' master copy. A centr
 posterior; a match on the master copy accuses no centre and recommends switching to the backup paper.
 Details: [`apps/demo/README.md`](apps/demo/README.md).
 
+## Encrypted Apps requirements, mapped to the code
+
+| Requirement | Where it is met | See it live |
+|---|---|---|
+| **ML-KEM-1024 encryption** | Each keyper share is encapsulated to that keyper's ML-KEM-1024 round key, and the centre lock is QoreSeal's hybrid ML-KEM-1024 + X25519 ([`packages/hourglass/src/seal.ts`](packages/hourglass/src/seal.ts)) | Every exam ciphertext in `deployments/demo/*/sealed/` |
+| **Registered recipient keys** | Centres publish their ML-KEM-1024 key with `MsgRegisterKEMKey`; the board seals only after `resolveRecipient` checks it on chain ([`apps/demo/src/actors.ts`](apps/demo/src/actors.ts), [`e2e.ts`](apps/demo/src/e2e.ts)) | Recipient cards in [`deployments/demo/cards/`](deployments/demo/cards) |
+| **ML-DSA key binding** | Recipient cards are hybrid-signed (ECDSA + ML-DSA-87); the seal page verifies the card against the ML-DSA-87 key read live from the `pqcKeyStatus` precompile ([`seal/page.tsx`](apps/web/src/app/(site)/seal/page.tsx)). Every board, centre, keyper and Leak Hunter action on chain is ML-DSA-87 signed and checked by `pqcVerify` ([`contracts/src`](contracts/src)) | [/seal](https://zerohour-exam.vercel.app/seal/) shows the check passing |
+| **Client-side encryption and decryption** | Sealing and opening run in the browser: [/seal](https://zerohour-exam.vercel.app/seal/) seals with ML-KEM-1024 + Shamir 2-of-3 + QoreSeal, and both /seal and the centre console decrypt locally; nothing is sent to a server (the site is static) | [/seal](https://zerohour-exam.vercel.app/seal/), [Public exam → Open it yourself](https://zerohour-exam.vercel.app/exam/?id=0x53cf9dc20c56b3abec5f0763981dab01f541fdb78cff5bc650c0c9d80e8670b0) |
+| QoreChain platform features | Hybrid-signed native transactions, EVM windows scoped to one contract, `pqcVerify` and `pqcKeyStatus` precompiles, QoreSeal, the Q-Day Drill | [Security page](https://zerohour-exam.vercel.app/security/) |
+
 ## Real runs on testnet
 
 | Exam | What it shows |
@@ -98,12 +110,15 @@ On 20 Nov we audited our own code, proved four contract flaws with tests, and re
 
 ## Verify and run
 
+Each line starts from the repository root (CI runs the same steps on every push):
+
 ```bash
 cd contracts && forge install foundry-rs/forge-std@v1.17.0 --no-git   # once: lib/ is not committed
-forge test                                 # 31 tests, incl. fuzzing and the audit regressions
+forge test                                 # 32 tests: fuzzing, the audit regressions, a re-entrancy attack
 cd packages/hourglass && npm i && npm test # 11
-cd apps/keyper && npm i && npm test        # 11
+cd apps/keyper && npm i && npm test        # 12
 cd apps/demo && npm i && npm test          # 8 Leak Hunter tests, no API key needed
+cd apps/web && npm i && npm test           # 4: the seal page's capsule and address checks
 cd apps/web && npm i && npm run dev        # the site against live testnet
 ```
 
