@@ -83,3 +83,20 @@ Contracts referred to are the audited **v2** ones (`deployments/testnet.json`).
 | 20 Nov | Self-audit: re-registration replay, duplicate keypers, squattable ids, one receipt per centre (each proved with a test); overclaims on fairness and collusion | v2 contracts deployed; site wording corrected |
 
 Details: [AI_USAGE.md](AI_USAGE.md#the-self-audit-20-nov).
+
+## 6. Static analysis (`forge build` lints, reviewed 25 Nov)
+
+`forge build` prints 24 lint notes in 8 categories. We reviewed each instead of editing the deployed v2 sources
+(any edit would no longer match the audited bytecode on chain).
+
+| Lint | Where | Verdict |
+|---|---|---|
+| `block-timestamp` (6) | release, report window, exit delay, centre/switch deadlines | **By design.** The bell *is* block time; validators can skew it by seconds (residual risk 6). No value depends on a timestamp beyond that. |
+| `unsafe-typecast` (5) | `uint64(block.timestamp …)`, `uint128(msg.value)` | **Safe.** `uint64` seconds overflow in ~585 billion years; a `msg.value` above 2^128 wei (3.4 × 10^20 QOR) cannot exist. |
+| `reentrancy-events` (2) | `revealReport`, `withdraw` emit after paying | **Safe.** Both follow checks-effects-interactions: `slashed`/`bond = 0`/`retired` are written before any transfer. `test/Reentrancy.t.sol` re-enters `revealReport` from the reward payment: the second call reverts, the reporter is paid once. |
+| `arbitrary-send-eth` (1) | `_send` | **Intended.** The recipient is either the reporter who proved the early seed, the burn address, or the `to` bound inside the keyper's own ML-DSA-87 withdraw signature (`test_withdraw_requiresPqcExitDelayAndBoundRecipient`). |
+| `calls-loop`, `require-revert-in-loop` (2 + 2) | `ZeroHourExam` reading keyper records | **Bounded.** `MAX_KEYPERS = 32`, and the call target is the immutable registry. A long loop only costs the exam's own creator. |
+| `unused-return` (3) | destructuring `hourglass.keypers(...)` | **Intended.** Only the needed fields of the record are read. |
+| `uninitialized-local` (1) | loop counter | **Intended.** Solidity zero-initialises it. |
+
+Dependencies: `npm audit --omit=dev` reports 0 vulnerabilities in all four TypeScript packages (25 Nov).
