@@ -1,6 +1,7 @@
 # ZeroHour
 
 [![CI](https://github.com/Nixon-CSE/zerohour/actions/workflows/ci.yml/badge.svg)](https://github.com/Nixon-CSE/zerohour/actions/workflows/ci.yml)
+[![Built on QoreChain](https://build.qorechain.io/badge/zerohour.svg)](https://build.qorechain.io/p/zerohour)
 
 **Exam papers that no printer, courier or exam centre can open before the bell.**
 A post-quantum time lock on QoreChain, built for *Build Before Q-Day* (Encrypted Apps).
@@ -92,6 +93,12 @@ Each run's transactions are in `deployments/demo/<id>/run.json`. Contract addres
 | Judges' centre (its key is public on purpose) | `0x42cAa5806f04b7AE51CFd4A0afB4dC08aeA0a303` |
 
 v1 contracts (`0x5CF8…f1AA`, `0x3494…c250`) stay readable with the first runs; why they were replaced is in `deployments/testnet.json`.
+
+The explorer does not verify source, so the exact build is pinned in the repo: [`contracts/foundry.toml`](contracts/foundry.toml)
+(solc 0.8.28, EVM `cancun`, `via_ir`, optimizer 200 runs), and every deploy transaction and block is in
+[`deployments/testnet.json`](deployments/testnet.json). Check that the deployed contracts are this source:
+`cd contracts && forge build && python3 verify-deployed.py` compares the on-chain bytecode with a local build
+(identical for both, immutables masked).
 
 ## What it does not protect against
 
