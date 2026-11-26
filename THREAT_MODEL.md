@@ -48,12 +48,14 @@ Contracts referred to are the audited **v2** ones (`deployments/testnet.json`).
 | T19 | A centre operator exposes the account while opening the paper | The console accepts only the centre's decryption key (QoreSeal seed, HKDF-derived and one-way); pasted recovery phrases are refused | `apps/web/src/app/(site)/open/page.tsx`, `npm run demo -- decryption-key` | Live |
 | T18 | The exam board leaks the paper itself | Not prevented: the board writes it. Detected if the leak is in the master order (T7); unequal papers are caught by T9 | — | Next: multi-setter sealing |
 | T20 | The exam board renders a centre's copy and leaks it to frame that centre | Not prevented: until the fairness reveal the board holds every centre's permutation seed, so it can produce any centre's order. A leak in a centre's order therefore points at that centre **or** the board. The Leak Hunter states the match, never the motive, and filing a report is the operator's decision | — | Next: multi-setter sealing, where no single party holds all the orders |
+| T21 | An attacker takes over the always-on keyper server | Keyper #1 runs in agent mode: the server holds a linked ed25519 agent key whose QoreChain spending rule allows only `HourglassRegistry.release` and no value, plus a low-value relayer. The recovery phrase (funds, ML-DSA-87 exit and withdraw signatures) is offline. The chain refused the agent's `requestExit`, a 1 QOR transfer and a call to another contract | `apps/keyper/src/agent.ts`, `test/agent.test.ts` | Agent release `9D15C69E…88EA`; refusals `7E430816…E6A8`, `BEFCD8B0…AB12`, `01F3A795…5186` |
 
 ## 4. Residual risks we accept today
 
 1. **The board can read the paper** (T18). Next step: split authorship so no single setter holds a whole paper.
 2. **Piece-trading keypers are not slashable** (T5). Defence is lock 2 plus keyper independence.
-3. **All keypers are run by us.** Independence is the point of a keyper set. The outside-keyper path works end to end
+3. **All keypers are run by us, and the server holds their seed chains.** A server takeover cannot steal funds or the bond from keyper #1 (T21), but it could leak future seeds: that is what the bond and slashing deter, and why keypers should be independent machines. Keypers #2 and #3 still run in window mode with their phrases on the server, because an agent release costs about 0.058 test QOR against 0.007 on a shared window and they release every 15 minutes.
+   Independence is the point of a keyper set. The outside-keyper path works end to end
    (exam 0x7bc70985: the board sealed to a keyper from its public key file alone), but that keyper is a test account we
    operate; recruiting keypers from other teams is in progress. Running them on one machine also hurts liveness: in exam
    0x74c361d3 the shared laptop slept and every keyper released 6 minutes after the bell (the lock held; the paper was late).

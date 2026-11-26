@@ -38,7 +38,7 @@ const REAL: [string, "live" | "next"][] = [
   ["Outside-keyper path: an exam sealed to a keyper from its published public keys alone, each checked against its on-chain root (run with a test keyper we operate)", "live"],
   ["Outside keypers from other institutions", "next"],
   ["Multi-setter sealing so no single person holds the paper", "next"],
-  ["Least-privilege hot key for keypers", "next"],
+  ["Least-privilege keyper key: keyper #1's server holds an agent key that QoreChain lets call only release() and move no value (forbidden calls refused on chain); its recovery phrase stays offline", "live"],
 ];
 
 export default function Security() {
