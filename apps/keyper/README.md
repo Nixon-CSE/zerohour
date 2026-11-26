@@ -74,6 +74,25 @@ multi-transaction windows; a keyper that opens a window per release pays a flat 
 keep the beacon on keypers with normal windows. A container
 image is in `Dockerfile` (secrets from the same two environment variables). Run each keyper in exactly one place.
 
+## Agent mode: keep the recovery phrase off the server
+
+A server that releases seeds does not need the account's recovery phrase. With QoreChain smart accounts the keyper
+links an ed25519 **agent key** whose spending rule allows exactly one call, `HourglassRegistry.release`
+(`0x020908fe`), and no value; a low-value **relayer** account pays the native fee.
+
+```bash
+npx tsx src/cli.ts agent-new                 # agent key + relayer account (fund the relayer with ~2 test QOR)
+npx tsx src/cli.ts agent-link --days 29      # owner-signed (ML-DSA-87): the release-only rule + the link
+npx tsx src/cli.ts agent-probe               # optional: the agent tries 3 forbidden calls; the chain refuses each
+npx tsx src/cli.ts agent-revoke              # owner-signed: disable the agent key at once
+```
+
+On the server set `KEYPER_MODE=agent`, `KEYPER_ADDRESS=0x…`, `KEYPER_AGENT_KEY` and `RELAYER_MNEMONIC` instead of
+`KEYPER_MNEMONIC`. Re-link before the expiry (the chain caps a link at about 30 days). An agent release costs about
+0.058 test QOR (the relayer's hybrid-signed native transaction), against about 0.007 for a release on a shared
+100-transaction window, so a keyper that releases every few minutes may prefer window mode. A stolen agent key can
+only post seeds; the seed chain on the server is still the thing to protect.
+
 ## Security properties
 
 - **Scoped EVM window.** Every EVM transaction on QoreChain needs a window opened by a
