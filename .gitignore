@@ -12,3 +12,6 @@ contracts/broadcast/**/*.lock
 secrets/
 *.secret.json
 .DS_Store
+
+# local browser-automation logs
+.playwright-mcp/
