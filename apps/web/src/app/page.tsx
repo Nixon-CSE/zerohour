@@ -11,6 +11,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { OmrField } from "@/components/OmrField";
 import { span, useAsync, useChainNow, useHead, useMounted } from "@/components/zh";
 import { allExams, registryState } from "@/lib/overview";
+import { addrUrl, txUrl } from "@/lib/chain";
 import { publicFile, type Reveal } from "@/lib/exam";
 import { centreLabel } from "@/lib/names";
 
@@ -257,6 +258,84 @@ function LeakHunter() {
   );
 }
 
+
+const GH = "https://github.com/Nixon-CSE/zerohour/blob/main/";
+
+/** The judge's path: three things to do in two minutes, each against the live chain. */
+function JudgePath() {
+  const mounted = useMounted();
+  const now = useChainNow();
+  // The beacon keypers release every third round (every 15 minutes); a message sealed now opens at the next one.
+  const every = 3 * CLOCK.roundSeconds;
+  const nextBell = Math.ceil((now - CLOCK.genesis + 60) / every) * every + CLOCK.genesis;
+  return (
+    <section className="wrap band judge" aria-labelledby="judge-title">
+      <p className="kicker">For judges</p>
+      <h2 id="judge-title" className="display">Judge it in two minutes.</h2>
+      <p className="lead">Three things to try. Each one runs in your browser against QoreChain testnet: nothing here is a recording or a mock.</p>
+      <ol className="judge-steps">
+        <li>
+          <Link href={`/open/?id=${PUBLIC_EXAM}&centre=${JUDGES_CENTRE}`}>
+            <span className="judge-n" aria-hidden>1</span>
+            <b>Open a real exam paper</b>
+            <span className="muted">The judges&apos; centre key is public on purpose. Your browser checks the ciphertext against its hash on chain, rebuilds the time key from the keypers&apos; seeds and decrypts. About 15 seconds.</span>
+            <span className="proof-go">Open the paper <ArrowUpRight className="size-4" /></span>
+          </Link>
+        </li>
+        <li>
+          <Link href="/seal/">
+            <span className="judge-n" aria-hidden>2</span>
+            <b>Lock a message yourself</b>
+            <span className="muted">Seal a note in your browser with ML-KEM-1024. It cannot be opened before the next bell{mounted ? <> (in <span className="num">{span(nextBell - now)}</span>)</> : null}, then it opens for you. Our keypers release a round every 15 minutes, around the clock.</span>
+            <span className="proof-go">Seal a message <ArrowUpRight className="size-4" /></span>
+          </Link>
+        </li>
+        <li>
+          <Link href="/ledger/">
+            <span className="judge-n" aria-hidden>3</span>
+            <b>Check us on chain</b>
+            <span className="muted">Every seed, slash and receipt is a QoreChain transaction, re-checked in your browser. The deployed bytecode matches the source byte for byte (<code>contracts/verify-deployed.py</code>).</span>
+            <span className="proof-go">Release ledger <ArrowUpRight className="size-4" /></span>
+          </Link>
+        </li>
+      </ol>
+    </section>
+  );
+}
+
+/** Rubric item "QoreChain tech usage": each feature, where the code uses it, and a testnet transaction that shows it. */
+const STACK: { feature: string; use: string; code: [string, string]; proof: [string, string] }[] = [
+  { feature: "pqcVerify precompile (0x…0a01)", use: "Every board, centre, keyper and Leak Hunter action is ML-DSA-87 signed and checked inside the contracts.", code: ["QorePQC.sol", `${GH}contracts/src/QorePQC.sol`], proof: ["createExam, board signature checked", txUrl("0xfc74539776aea4096a77769070516ef1b29bb36cb76f8e529cb9f29c66852ad6")] },
+  { feature: "pqcKeyStatus precompile (0x…0a02)", use: "Contracts read each account's registered ML-DSA-87 key; the seal page reads it live to verify recipient cards.", code: ["seal/page.tsx", `${GH}apps/web/src/app/(site)/seal/page.tsx`], proof: ["try it on /seal", "/seal/"] },
+  { feature: "QoreSeal + KEM key registry", use: "Each centre registers an ML-KEM-1024 key on chain; its paper is sealed to that key with an ML-DSA-signed recipient card.", code: ["seal.ts", `${GH}packages/hourglass/src/seal.ts`], proof: ["judges' centre receipt", txUrl("0x1f8485a7d93b3a6d25af66fa271a7f547926df5f40b1b4a0bae89f2472234103")] },
+  { feature: "Hybrid ECDSA + ML-DSA-87 transactions", use: "Key registration, transfers and window openings are hybrid-signed native transactions.", code: ["native.ts", `${GH}apps/keyper/src/native.ts`], proof: ["board account", addrUrl("0xe1FD768beFA0516Ef3dBf7bFc80aAC471298F9dA")] },
+  { feature: "Scoped EVM windows", use: "Keypers can only call the registry; the drill account opens one-transaction windows because its ECDSA key is public.", code: ["daemon.ts", `${GH}apps/keyper/src/daemon.ts`], proof: ["keyper #2", addrUrl("0x17aB3569aF1136D8CF22Ccc83b22ec73a4FE5BbA")] },
+  { feature: "Slashing in HourglassRegistry", use: "An early seed is commit-revealed by anyone; the contract checks it against the keyper's hash chain and takes the bond.", code: ["HourglassRegistry.sol", `${GH}contracts/src/HourglassRegistry.sol`], proof: ["keyper #4 slashed (v2)", txUrl("0xc5ff84e707208048f4f585a7bcfc22cb71895454b1edfdf727e2c4a815576308")] },
+  { feature: "Q-Day Drill", use: "The keyper account handed its ECDSA key to the attacker bot on 18 Nov and lost nothing: every action that matters needs ML-DSA-87.", code: ["THREAT_MODEL.md", `${GH}THREAT_MODEL.md`], proof: ["drill-day release", txUrl("0xa57f4aa7d22d82254f94de31473e1d31c33cd64193c87708d3cf655d88550799")] },
+];
+
+function Stack() {
+  return (
+    <section className="wrap band" aria-labelledby="stack-title">
+      <p className="kicker">QoreChain inside</p>
+      <h2 id="stack-title" className="display">Built on QoreChain, not beside it.</h2>
+      <p className="lead">Each piece of the lock is a QoreChain feature doing real work. Follow any row to the code that uses it and a testnet transaction where it happened.</p>
+      <div className="stack-grid">
+        {STACK.map((r) => (
+          <article key={r.feature} className="stack-card">
+            <h3>{r.feature}</h3>
+            <p className="muted">{r.use}</p>
+            <p className="stack-links">
+              <a href={r.code[1]} target="_blank" rel="noreferrer">Code: {r.code[0]} <ArrowUpRight className="size-3.5" /></a>
+              {r.proof[1].startsWith("/") ? <Link href={r.proof[1]}>Proof: {r.proof[0]} <ArrowUpRight className="size-3.5" /></Link> : <a href={r.proof[1]} target="_blank" rel="noreferrer">Proof: {r.proof[0]} <ArrowUpRight className="size-3.5" /></a>}
+            </p>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function Proof() {
   const reg = useAsync(() => registryState());
   const all = reg.data?.releases ?? [];
@@ -338,10 +417,12 @@ export default function Landing() {
   return (
     <main id="content">
       <Hero />
+      <JudgePath />
       <Chain />
       <Locks />
       <Bell />
       <LeakHunter />
+      <Stack />
       <Proof />
       <Faq />
       <Cta />
