@@ -22,6 +22,8 @@ export const paths = {
   state: resolve(HOME, "state.json"),
   log: resolve(HOME, "releases.jsonl"),
   leaves: resolve(HOME, "pk-leaves.json"), // public: keccak256(pk_r) for every round
+  agent: resolve(env.KEYPER_AGENT_FILE ?? resolve(HOME, "agent.secret.json")), // { key, pubkey, account } ed25519
+  relayer: resolve(env.RELAYER_ACCOUNT ?? resolve(HOME, "relayer.secret.json")), // { mnemonic } low-value fee payer
 };
 
 export const net_ = {

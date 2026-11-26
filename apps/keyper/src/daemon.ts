@@ -18,6 +18,7 @@ import type { Hex } from "viem";
 import { contracts, paths, tuning } from "./config.ts";
 import { openWindow, windowProblem, windowStatus } from "./native.ts";
 import { usingBackup, chainTime, fees, keyperRecord, scanExamTargets, sendRelease, type ExamTarget } from "./registry.ts";
+import { releaseViaAgent } from "./agent.ts";
 import { plan, releaseGas, roundTime, unusedBackupTargets } from "./schedule.ts";
 
 export interface ChainSecret {
@@ -67,6 +68,42 @@ export function assertSecretMatches(secret: ChainSecret, rec: Awaited<ReturnType
   if (mismatch.length) throw new Error(`local seed chain does not match the registry (${mismatch.join(", ")}) — refusing to release`);
 }
 
+/**
+ * How a due seed reaches the chain. "window": the keyper account sends release() itself through a scoped EVM window
+ * (needs the account's keys on this machine). "agent": a linked agent key that may only call release() signs it and a
+ * low-value relayer pays the fee (the keyper's recovery phrase stays offline). See agent.ts.
+ */
+export interface Releaser {
+  mode: "window" | "agent";
+  address: Hex;
+  release(round: number, seed: Uint8Array, gas: bigint, fee: Awaited<ReturnType<typeof fees>>, costUqor: bigint): Promise<{ hash: string; status: string; block: bigint; gasUsed: bigint; nativeGasUsed?: bigint; reason?: string }>;
+}
+
+export function windowReleaser(acc: UnifiedAccount): Releaser {
+  return {
+    mode: "window",
+    address: acc.evm as Hex,
+    async release(round, seed, gas, fee, cost) {
+      const w = await windowStatus(acc);
+      const why = windowProblem(w, contracts.hourglass, cost);
+      if (why) {
+        const perTx = weiToUqorCeil(tuning.windowGasPerTx * fee.maxFeePerGas);
+        const tx = await openWindow(acc, [contracts.hourglass], perTx > cost ? perTx : cost);
+        log("window-opened", { reason: why, tx, scope: contracts.hourglass, txs: tuning.windowTxs, blocks: tuning.windowBlocks });
+      }
+      return sendRelease(acc.privateKey as Hex, acc.evm as Hex, round, seed, gas, fee);
+    },
+  };
+}
+
+export function agentReleaser(keyper: { evm: Hex; cosmos: string }, agentKey: Uint8Array, relayer: UnifiedAccount): Releaser {
+  return {
+    mode: "agent",
+    address: keyper.evm,
+    release: (round, seed, gas) => releaseViaAgent({ keyper, agentKey, relayer, round, seed, evmGas: gas }),
+  };
+}
+
 export interface RunOptions {
   once?: boolean;
   dryRun?: boolean;
@@ -75,12 +112,12 @@ export interface RunOptions {
   extraTargets?: number[];
 }
 
-export async function run(acc: UnifiedAccount, secret: ChainSecret, opts: RunOptions = {}) {
-  const me = acc.evm as Hex;
+export async function run(releaser: Releaser, secret: ChainSecret, opts: RunOptions = {}) {
+  const me = releaser.address;
   const top = hexToBytes(secret.top);
   const state = loadState();
   assertSecretMatches(secret, await keyperRecord(me));
-  log("start", { keyper: me, registry: contracts.hourglass, exam: contracts.exam, dryRun: !!opts.dryRun, heartbeatEvery: opts.heartbeatEvery ?? 0, beaconEvery: opts.beaconEvery ?? 0 });
+  log("start", { keyper: me, registry: contracts.hourglass, exam: contracts.exam, mode: releaser.mode, dryRun: !!opts.dryRun, heartbeatEvery: opts.heartbeatEvery ?? 0, beaconEvery: opts.beaconEvery ?? 0 });
 
   let stop = false;
   process.once("SIGINT", () => ((stop = true), log("stopping")));
@@ -160,19 +197,11 @@ export async function run(acc: UnifiedAccount, secret: ChainSecret, opts: RunOpt
           return;
         }
 
-        const w = await windowStatus(acc);
-        const why = windowProblem(w, contracts.hourglass, cost);
-        if (why) {
-          const perTx = weiToUqorCeil(tuning.windowGasPerTx * fee.maxFeePerGas);
-          const tx = await openWindow(acc, [contracts.hourglass], perTx > cost ? perTx : cost);
-          log("window-opened", { reason: why, tx, scope: contracts.hourglass, txs: tuning.windowTxs, blocks: tuning.windowBlocks });
-        }
-
-        const r = await sendRelease(acc.privateKey as Hex, me, p.round, seed, gas, fee);
-        log("released", { round: p.round, reason: p.reason, steps: p.steps, tx: r.hash, status: r.status, block: r.block, gasUsed: r.gasUsed });
+        const r = await releaser.release(p.round, seed, gas, fee, cost);
+        log("released", { round: p.round, reason: p.reason, steps: p.steps, via: releaser.mode, tx: r.hash, status: r.status, block: r.block, gasUsed: r.gasUsed, ...(r.nativeGasUsed !== undefined ? { nativeGasUsed: r.nativeGasUsed } : {}), ...(r.reason ? { failure: r.reason } : {}) });
         if (r.status !== "success") {
           failing.reverts++;
-          const outOfGas = r.gasUsed >= gas;
+          const outOfGas = r.gasUsed >= gas || /out of gas/i.test(r.reason ?? "");
           if (outOfGas) failing.boost = (failing.boost * 3n) / 2n;
           if (failing.reverts >= MAX_REVERTS) {
             log("giving-up", { round: p.round, reverts: failing.reverts, lastTx: r.hash, note: "stopped instead of burning gas; check the registry and the seed chain" });

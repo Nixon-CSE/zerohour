@@ -60,13 +60,18 @@ async function sequence(address: string) {
 }
 
 export async function broadcastNative(acc: UnifiedAccount, mode: "hybrid" | "classical", messages: any[], gas: number = GAS.default): Promise<string> {
+  return (await broadcastNativeResult(acc, mode, messages, gas)).transactionHash;
+}
+
+/** The committed result (events, msgResponses, gasUsed), for callers that must read more than the hash. */
+export async function broadcastNativeResult(acc: UnifiedAccount, mode: "hybrid" | "classical", messages: any[], gas: number = GAS.default) {
   const { accountNumber, sequence: seq } = await sequence(acc.cosmos);
   const signer = new EthNativeSigner(acc, { signMode: mode, rest: net_.rest });
   const transport = await StargateClient.connect(net_.rpc);
   try {
     const res = await signer.signAndBroadcast(transport, { chainId: net_.chainId, accountNumber, sequence: seq, fee: fee(gas), messages });
     if (res.code !== 0) throw new Error(`native tx failed (code ${res.code}): ${res.transactionHash}`);
-    return res.transactionHash;
+    return res;
   } finally {
     transport.disconnect();
   }

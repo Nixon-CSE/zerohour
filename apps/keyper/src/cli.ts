@@ -15,17 +15,51 @@
  *
  * Files live in $KEYPER_HOME (default ~/.zerohour-keyper); see src/config.ts.
  */
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { weiToUqorCeil } from "@qorechain/evm";
 import { mldsa87 } from "@qorechain/pqc";
 import { anchorOf, bytesToHex, hexToBytes, k256, merkleLevels, merkleRoot, pkLeaf, proofFromLevels, roundKeypair, seedAt, verifyMerkle } from "@zerohour/hourglass";
 import { formatEther, toHex, type Hex } from "viem";
 import { contracts, net_, paths, tuning } from "./config.ts";
-import { run, type ChainSecret } from "./daemon.ts";
+import { agentPubkey, agentStatus, executeViaAgent, linkAgent, revokeAgent, RELEASE_SELECTOR } from "./agent.ts";
+import { deriveUnifiedAccount, evmToQor, generateMnemonic } from "@qorechain/sdk";
+import { encodeFunctionData, parseEther } from "viem";
+import { agentReleaser, run, windowReleaser, type ChainSecret, type Releaser } from "./daemon.ts";
 import { createAccountFile, ensurePqcKey, loadAccount, openWindow, windowProblem, windowStatus } from "./native.ts";
 import { fees, keyperRecord, pub, registryAbi, wallet } from "./registry.ts";
 import { currentRound, roundTime } from "./schedule.ts";
+
+
+// ---------------------------------------------------------------- agent (least-privilege key) helpers
+/** The agent key: KEYPER_AGENT_KEY (hex, for servers) or the agent file. */
+export function loadAgentKey(): Uint8Array {
+  const fromEnv = process.env.KEYPER_AGENT_KEY?.trim();
+  if (fromEnv) return hexToBytes(fromEnv);
+  if (!existsSync(paths.agent)) throw new Error(`no agent key at ${paths.agent} — run: zerohour-keyper agent-new`);
+  return hexToBytes(JSON.parse(readFileSync(paths.agent, "utf8")).key);
+}
+/** The relayer that pays the native fee: RELAYER_MNEMONIC (servers) or the relayer file. */
+export function loadRelayer() {
+  const fromEnv = process.env.RELAYER_MNEMONIC?.trim();
+  if (fromEnv) return deriveUnifiedAccount(fromEnv, 0);
+  if (!existsSync(paths.relayer)) throw new Error(`no relayer account at ${paths.relayer} — run: zerohour-keyper agent-new`);
+  return deriveUnifiedAccount(JSON.parse(readFileSync(paths.relayer, "utf8")).mnemonic, 0);
+}
+const writeSecret = (file: string, obj: unknown) => { mkdirSync(dirname(file), { recursive: true }); writeFileSync(file, JSON.stringify(obj, null, 2), { mode: 0o600 }); chmodSync(file, 0o600); };
+
+/**
+ * window mode (default): this machine holds the keyper's phrase and sends release() itself.
+ * agent mode (KEYPER_MODE=agent or --agent): only the agent key, the relayer and the keyper's public address
+ * (KEYPER_ADDRESS, 0x…) are needed here; the recovery phrase stays offline.
+ */
+async function releaserFor(args: string[]): Promise<Releaser> {
+  if (process.env.KEYPER_MODE === "agent" || args.includes("--agent")) {
+    const evm = (process.env.KEYPER_ADDRESS ?? (await loadAccount()).evm) as Hex;
+    return agentReleaser({ evm, cosmos: evmToQor(evm) }, loadAgentKey(), await loadRelayer());
+  }
+  return windowReleaser(await loadAccount());
+}
 
 const flag = (args: string[], name: string) => args.includes(name);
 const opt = (args: string[], name: string) => {
@@ -138,7 +172,7 @@ const commands: Record<string, (a: string[]) => Promise<void>> = {
   async run(args) {
     const hb = opt(args, "--heartbeat");
     const bc = opt(args, "--beacon");
-    await run(await loadAccount(), loadSecret(), {
+    await run(await releaserFor(args), loadSecret(), {
       dryRun: flag(args, "--dry-run"), once: flag(args, "--once"),
       heartbeatEvery: hb ? Number(hb) : tuning.heartbeatEvery, beaconEvery: bc ? Number(bc) : tuning.beaconEvery,
     });
@@ -193,6 +227,69 @@ const commands: Record<string, (a: string[]) => Promise<void>> = {
     } else console.log(json);
   },
 
+
+  /** Create the agent key and the relayer account (no chain action). Fund the relayer, then run agent-link. */
+  async "agent-new"() {
+    const owner = await loadAccount();
+    if (!existsSync(paths.agent)) {
+      const key = globalThis.crypto.getRandomValues(new Uint8Array(32));
+      writeSecret(paths.agent, { purpose: "ZeroHour keyper agent key (ed25519): may only call HourglassRegistry.release", key: bytesToHex(key), pubkey: toHex(agentPubkey(key)), account: owner.cosmos });
+      console.log(`agent key created -> ${paths.agent}`);
+    } else console.log(`agent key exists: ${paths.agent}`);
+    if (!existsSync(paths.relayer)) {
+      const mnemonic = generateMnemonic();
+      const r = await deriveUnifiedAccount(mnemonic, 0);
+      writeSecret(paths.relayer, { purpose: "ZeroHour keyper relayer: pays the native fee of agent releases; keep it low-value", mnemonic, evm: r.evm, cosmos: r.cosmos });
+      console.log(`relayer account created -> ${paths.relayer}`);
+    }
+    const r = await loadRelayer();
+    console.log(`agent pubkey ${toHex(agentPubkey(loadAgentKey()))}\nrelayer      ${r.cosmos} (fund with ~2 test QOR)`);
+  },
+
+  /** Owner-signed: link the agent key with the release-only spending rule. Run where the owner phrase lives. */
+  async "agent-link"(args) {
+    const owner = await loadAccount();
+    const days = Number(opt(args, "--days") ?? 29);
+    // The relayer signs hybrid native txs, so its ML-DSA-87 key must be registered first (needs its funding).
+    const relayer = await loadRelayer();
+    const reg = await ensurePqcKey(relayer);
+    if (reg) console.log(`relayer ML-DSA-87 key registered: ${reg}`);
+    const r = await linkAgent(owner, loadAgentKey(), { days, force: flag(args, "--force") });
+    const f = JSON.parse(readFileSync(paths.agent, "utf8"));
+    writeSecret(paths.agent, { ...f, linkTx: r.tx, expiryUnix: r.expiryUnix });
+    console.log(`linked ${r.pubkey} to ${owner.cosmos}: may call only ${contracts.hourglass}/${RELEASE_SELECTOR} (release), no value, until ${new Date(r.expiryUnix * 1000).toISOString()}\ntx ${r.tx}`);
+  },
+
+  async "agent-status"() {
+    const key = loadAgentKey();
+    const account = process.env.KEYPER_ADDRESS_QOR ?? (await loadAccount()).cosmos;
+    console.log(JSON.stringify(await agentStatus(account, agentPubkey(key)), (_, v) => (typeof v === "bigint" ? v.toString() : v instanceof Uint8Array ? toHex(v) : v), 2));
+  },
+
+  async "agent-revoke"() {
+    const owner = await loadAccount();
+    console.log(`revoked: ${await revokeAgent(owner, agentPubkey(loadAgentKey()))}`);
+  },
+
+  /**
+   * Least-privilege proof on chain: the agent tries three things its rule forbids. Each must come back
+   * success=false (the chain refuses it); costs the relayer a fee per attempt.
+   */
+  async "agent-probe"() {
+    const owner = await loadAccount();
+    const account = { evm: owner.evm as Hex, cosmos: owner.cosmos };
+    const base = { account, agentKey: loadAgentKey(), relayer: await loadRelayer(), evmGas: 120_000n };
+    const tries: [string, Parameters<typeof executeViaAgent>[0]][] = [
+      ["another registry function (requestExit: the first step of taking the bond)", { ...base, to: contracts.hourglass, data: encodeFunctionData({ abi: registryAbi, functionName: "requestExit", args: [account.evm, "0x00"] }) }],
+      ["moving value (1 QOR to the relayer)", { ...base, to: (await loadRelayer()).evm as Hex, value: parseEther("1").toString(), data: "0x", evmGas: 30_000n }],
+      ["another contract (ZeroHourExam)", { ...base, to: contracts.exam, data: "0x12345678" }],
+    ];
+    for (const [what, a] of tries) {
+      const r = await executeViaAgent(a);
+      console.log(`${r.status === "success" ? "ALLOWED (unexpected!)" : "refused"}: ${what} -> ${r.reason ?? "ok"} (tx ${r.hash})`);
+    }
+  },
+
   /** Start leaving: ML-DSA-87 signed; the bond unlocks after the registry's exit delay. */
   async exit() {
     const acc = await loadAccount();
@@ -212,7 +309,7 @@ const commands: Record<string, (a: string[]) => Promise<void>> = {
   },
 
   async "release-now"(args) {
-    await run(await loadAccount(), loadSecret(), { once: true, heartbeatEvery: 1, dryRun: flag(args, "--dry-run") });
+    await run(await releaserFor(args), loadSecret(), { once: true, heartbeatEvery: 1, dryRun: flag(args, "--dry-run") });
   },
 };
 
