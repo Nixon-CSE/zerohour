@@ -119,7 +119,7 @@ function Leaks({ v }: { v: ExamView }) {
   );
 }
 
-const pretty = (label: string) => label.replace(/^(centre-[a-z]+-\d+)/, (m) => centreLabel(m));
+const pretty = (label: string) => label.replace(/^(centre-[a-z0-9-]+)(?=:)/, (m) => centreLabel(m));
 
 function Fairness({ v }: { v: ExamView }) {
   const f = useAsync(() => verifyFairness(v), [v.id]);
@@ -148,6 +148,9 @@ function Exam({ id }: { id: Hex }) {
     return { label: `K${i + 1}`, on, bad: k.slashed, note: k.slashed ? "slashed" : on && rel?.time ? `+${rel.time - v.unlockAt} s` : on ? "released" : "sealed" };
   });
   const before = !v.unlocked && now < v.unlockAt;
+  // After the bell the page leads with the outcome, not a clock of a moment that has passed.
+  const delays = v.keypers.map((k) => v.timeline.find((t) => t.kind === "release" && eq(t.args.keyper, k.address) && Number(t.args.round) >= round)?.time).filter((t): t is number => !!t).map((t) => t - v.unlockAt);
+  const opened = v.centres.filter((c) => c.openedAt).length;
   return (
     <>
       <h1>{examTitle(v.manifest?.exam, v.id)}</h1>
@@ -155,7 +158,16 @@ function Exam({ id }: { id: Hex }) {
 
       <div className="bell">
         <div className="when">{v.onchain.usingBackup ? "Backup paper B" : "Paper A"}, round {round}, bell at {utc(v.unlockAt)}</div>
-        <div className={`clock ${before ? "" : "open"}`} role={before ? "timer" : undefined}>{before ? span(v.unlockAt - now) : <>{hms(v.unlockAt)}<small>UTC</small></>}</div>
+        {before || !v.unlocked ? (
+          <div className={`clock ${before ? "" : "open"}`} role={before ? "timer" : undefined}>{before ? span(v.unlockAt - now) : <>{hms(v.unlockAt)}<small>UTC</small></>}</div>
+        ) : (
+          <dl className="outcome" aria-label="Outcome">
+            <div><dt>Opened at the bell</dt><dd>{hms(v.unlockAt)} <small>UTC</small></dd></div>
+            <div><dt>First seed on chain</dt><dd>{delays.length ? `+${Math.min(...delays)} s` : "—"}</dd></div>
+            <div><dt>Centres opened</dt><dd>{opened} of {v.centres.length}</dd></div>
+            <div><dt>Fairness</dt><dd className={v.onchain.revealed ? "ok" : "muted"}>{v.onchain.revealed ? "Proven" : "Not revealed yet"}</dd></div>
+          </dl>
+        )}
         <Bubbles items={bubbles} />
         <p className="rule-line">{v.onchain.threshold} of {v.keypers.length} keyper seeds open the time lock. {v.unlocked ? "The contract reports it unlocked." : "The contract still reports it locked."}</p>
       </div>

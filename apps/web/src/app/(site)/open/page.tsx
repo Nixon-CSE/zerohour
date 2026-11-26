@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { sealKeysFromSeed } from "@qorechain/qoreseal";
 import { bytesToHex, hexToBytes, k256, makeVariant, openPaper, type Paper } from "@zerohour/hourglass";
 import type { Hex } from "viem";
@@ -63,6 +63,9 @@ function Console({ v, centre }: { v: ExamView; centre: Hex }) {
   }, [v.id, round, done ? 0 : Math.floor(now / 10)]);
   const [keyText, setKeyText] = useState("");
   const [result, setResult] = useState<{ paper?: Paper; ms?: number; error?: string; hash?: Hex }>({});
+  // The opened paper renders below the locks; bring it into view so the click visibly does something.
+  const resultRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { if (result.paper) resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }); }, [result.paper]);
   // The judges' centre publishes its decryption key on purpose so anyone can try a real opening.
   const judge = useAsync(async () => (c?.name === "centre-judges" ? publicFile<{ decryptionKey: string }>("demo", "judge-centre.json") : null), [c?.name]);
   // After the fairness reveal, rebuild this centre's copy from the public reveal to compare.
@@ -95,7 +98,7 @@ function Console({ v, centre }: { v: ExamView; centre: Hex }) {
 
   return (
     <>
-      <h1>Centre {label}</h1>
+      <h1>{/centre/i.test(label) ? label : `Centre ${label}`}</h1>
       <p className="muted" style={{ marginTop: 10 }}>
         Centre console for <Link href={`/exam/?id=${v.id}`}>{examTitle(v.manifest?.exam, v.id)}</Link>, {backup ? "backup paper B" : "paper A"}.
         The bell is at {utc(v.unlockAt)}{before ? `, in ${span(v.unlockAt - now)}` : ""}.
@@ -122,7 +125,7 @@ function Console({ v, centre }: { v: ExamView; centre: Hex }) {
           <label htmlFor="centre-key">Centre decryption key</label>
           {judge.data?.decryptionKey && <p className="small" style={{ margin: "4px 0 8px" }}>This is the judges&apos; centre: its key is public on purpose. <button type="button" className="underline font-semibold" onClick={() => setKeyText(judge.data!.decryptionKey)}>Use the judges&apos; key</button></p>}
           <textarea id="centre-key" value={keyText} onChange={(e) => setKeyText(e.target.value)} spellCheck={false} autoComplete="off" placeholder="zerohour-centre-key:…" />
-          <input type="file" accept=".txt,text/plain" aria-label="Load the decryption key file" className="small mt-2" onChange={async (e) => { const f = e.target.files?.[0]; if (f) setKeyText((await f.text()).trim()); }} />
+          <label className="file-btn" style={{ marginTop: 8 }}>Load the key file<input type="file" accept=".txt,text/plain" className="sr-only" onChange={async (e) => { const f = e.target.files?.[0]; if (f) setKeyText((await f.text()).trim()); }} /></label>
           <p className="small muted" style={{ marginTop: 8 }}>The key stays in this page: nothing is sent anywhere. It can open this centre&apos;s copies and nothing else: it cannot sign, move funds or recover the account.</p>
           <Button size="xl" onClick={open} disabled={busy || !keyText.trim() || !file.data?.matches || !timeOpen}>
             {busy ? "Opening…" : timeOpen ? "Open paper" : before ? `Opens at ${utc(v.unlockAt)}` : "Waiting for keyper seeds"}
@@ -131,6 +134,9 @@ function Console({ v, centre }: { v: ExamView; centre: Hex }) {
         </div>
       </div>
 
+      <div ref={resultRef} style={{ scrollMarginTop: 80 }} aria-live="polite">
+        {result.paper && <p className="ok tick" style={{ marginTop: 24, fontSize: 17 }}>Opened in this browser in {result.ms} ms.</p>}
+      </div>
       {result.paper && result.hash && <CopyCheck v={v} centreName={c.name} centre={centre} hash={result.hash} reveal={reveal.data ?? null} />}
       {result.paper && <QuestionPaper p={result.paper} centre={label} ms={result.ms!} />}
     </>
