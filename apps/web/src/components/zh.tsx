@@ -56,15 +56,21 @@ export function useChainNow() {
   return head ? now / 1000 + head.offset : now / 1000;
 }
 
-export function HeadTick() {
+/** The live chain head. `compact` (the desktop header) keeps it short enough to sit on one row with the nav. */
+export function HeadTick({ compact = false }: { compact?: boolean }) {
   const { clock: head, failures } = useChain();
   const stale = !head || Date.now() - head.seenAt > 15000;
+  const down = failures >= 2 && stale;
+  const full = down ? `QoreChain testnet RPC unreachable${head ? ` since block ${head.block.toLocaleString()}` : ""}, retrying` : head ? `QoreChain testnet block ${head.block.toLocaleString()}` : "connecting to QoreChain testnet";
   return (
-    <span className="head-tick" aria-live="off">
+    <span className="head-tick" aria-live="off" title={compact ? full : undefined}>
       <span className={`dot ${stale ? "stale" : ""}`} aria-hidden />
-      {failures >= 2 && stale
-        ? <span className="err">QoreChain testnet RPC unreachable{head ? ` since block ${head.block.toLocaleString()}` : ""}, retrying</span>
-        : head ? (<>QoreChain testnet block <b>{head.block.toLocaleString()}</b></>) : "connecting to QoreChain testnet"}
+      {compact ? (
+        <>
+          <span className="sr-only">{full}</span>
+          <span aria-hidden>{down ? <span className="err">RPC down, retrying</span> : head ? <>Block <b>{head.block.toLocaleString()}</b></> : "connecting…"}</span>
+        </>
+      ) : down ? <span className="err">{full}</span> : head ? (<>QoreChain testnet block <b>{head.block.toLocaleString()}</b></>) : full}
     </span>
   );
 }

@@ -31,7 +31,7 @@ export function Nav() {
           ))}
         </nav>
         <div className="ml-auto flex items-center gap-2">
-          <span className="hidden xl:flex"><HeadTick /></span>
+          <span className="hidden xl:flex"><HeadTick compact /></span>
           <ThemeToggle className={home ? "text-white hover:bg-white/10 hover:text-white" : ""} />
           <Button asChild size="lg" className={cn("hidden sm:inline-flex", home && "bg-[#c92d62] text-white hover:bg-[#b0264f]")}>
             <Link href="/exam/?id=0x53cf9dc20c56b3abec5f0763981dab01f541fdb78cff5bc650c0c9d80e8670b0">See a real exam</Link>
